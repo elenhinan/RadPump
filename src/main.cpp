@@ -42,10 +42,6 @@ void setup() {
     digitalWrite(STEP_EN, HIGH); // disable drivers
 
     // setup serial
-    //pinMode(OLEDA_CS, OUTPUT);
-    //pinMode(OLEDB_CS, OUTPUT);
-    //digitalWrite(OLEDA_CS, HIGH);
-    //digitalWrite(OLEDB_CS, HIGH);
     Serial.begin(BAUDRATE);
 
     // setup display
@@ -75,59 +71,21 @@ void setup() {
 
     // init steppers
     pumpA.init();
+    //pumpB.init();
 
     // enable both drivers
     digitalWrite(STEP_EN, LOW); // enable driver
 
     //pumpA.calibrate();
-    pumpA.stealthchop(false);
-    pumpA.home(LinearStage::DIR_BOTH);
-    pumpA.stealthchop(true);
-    pumpA.dir(LinearStage::DIR_NEG);
+    //pumpA.home(LinearStage::DIR_BOTH);
+    //pumpA.dir(LinearStage::DIR_NEG);
+    delay(2000);
+    //pumpA.search();
+    pumpA.home(LinearStage::DIR_NEG);
+    pumpA.move(40,8.,20.0);
     delay(2000);
 }
 
 void loop() {
-    unsigned long nowtime = micros();
-    static unsigned long lasttime = micros();
-    static unsigned char counts = 0;    
-    static bool done = false;
-    // make a step
-    //delay(100);
-    // int x = analogRead(JSTK_X);
-    // int y = analogRead(JSTK_Y);
-    // displayA.clearDisplay();
-    // displayA.setTextSize(2);
-    // displayA.setCursor(0,0);
-    // if (digitalRead(JSTK_SW)) {
-    //     displayA.setTextColor(BLACK, WHITE); // 'inverted' text
-    // } else {
-    //     displayA.setTextColor(WHITE);    
-    // }
-    // displayA.println(x);
-    // displayA.display();
 
-    // displayB.clearDisplay();
-    // displayB.setTextSize(2);
-    // displayB.setCursor(0,0);
-    // if (digitalRead(JSTK_SW)) {
-    //     displayB.setTextColor(BLACK, WHITE); // 'inverted' text
-    // } else {
-    //     displayB.setTextColor(WHITE);    
-    // }
-    // displayB.println(y);
-    // displayB.display();
-    
-    
-    delayMicroseconds(200);
-    if(pumpA.get_position() != (pumpA.get_endstop())/2)
-    {
-        pumpA.step();
-    }
-    else if(!done)
-    {
-        Serial.print("Position: ");
-        Serial.println(pumpA.get_position());
-        done = true;
-    }
 }
