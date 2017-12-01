@@ -81,8 +81,8 @@ void setup() {
     //pumpA.dir(LinearStage::DIR_NEG);
     delay(2000);
     //pumpA.search();
-    pumpA.home(LinearStage::DIR_NEG);
-    pumpA.move(40,8.,20.0);
+    pumpA.home(LinearStage::DIR_BOTH);
+    pumpA.move_abs(40,8.,20.0);
     delay(2000);
 }
 

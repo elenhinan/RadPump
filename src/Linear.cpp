@@ -20,6 +20,27 @@ LinearStage::LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t
     this->dirMask = digitalPinToBitMask(pinDIR);
 }
 
+void LinearStage::setup_timer()
+{
+    // Set stepper interrupt
+    cli();//stop interrupts
+    TCCR1A = 0;// set entire TCCR1A register to 0
+    TCCR1B = 0;// same for TCCR1B
+    TCNT1  = 0;//initialize counter value to 0
+    OCR1A = 256;// = (16*10^6) / (1*1024) - 1 (must be <65536) // todo set to board freq
+    // turn on CTC mode
+    TCCR1B |= (1 << WGM12);
+    // Set CS11 bits for 8 prescaler
+    TCCR1B |= (1 << CS11);// | (1 << CS10);  
+    // enable timer compare interrupt
+    TIMSK1 |= (1 << OCIE1A);
+    sei();//allow interrupts
+}
+
+ISR(TIMER1_COMPA_vect){
+  //do stuff
+}
+
 void LinearStage::init()
 {
 #ifdef DEBUG
@@ -61,10 +82,15 @@ void LinearStage::init()
 void LinearStage::stall_event()
 {
     stalled = stallguard_enabled;
-    //Serial.print("Stage #");
-    //Serial.print(number,DEC);
-    //Serial.println("Stall!");
-    //Serial.println(number,DEC);
+    // if(stallguard_enabled)
+    // {
+    //     state = MOVE_STALLED;
+    //     #ifdef DEBUG
+    //     Serial.print("Stage #");
+    //     Serial.print(number);
+    //     Serial.println(" Stall!");
+    //     #endif
+    // }
 }
 
 void LinearStage::setup_driver()
@@ -129,9 +155,7 @@ void LinearStage::stallguard(bool enable)
     stalled = false;
     stallguard_enabled = enable;
     #ifdef DEBUG
-    Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
-    Serial.print(F(" Stallguard:"));
+    Serial.print(F("  stallguard:"));
     Serial.println(enable,DEC);
     #endif
 }
@@ -141,9 +165,7 @@ void LinearStage::stealthchop(bool enable)
     stepper->stealthChop(enable);
     stepper->coolstep_min_speed(enable?0:0xfffff);
     #ifdef DEBUG
-    Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
-    Serial.print(F(" StealthChop:"));
+    Serial.print(F("  stealthchop:"));
     Serial.println(enable,DEC);
     #endif
 }
@@ -157,23 +179,6 @@ void LinearStage::home(int8_t home_dir)
     #endif
     stealthchop(false);
     stallguard(true);
-    if(home_dir == DIR_BOTH || home_dir == DIR_NEG)
-    {
-        dir(DIR_NEG);
-        while(!stalled)
-        {
-            delayMicroseconds(HOMING_SPEED);
-            step();
-        }
-        #ifdef DEBUG
-        Serial.print(F("  home: 0 ("));
-        Serial.print(position,DEC);
-        Serial.println(')');
-        #endif
-        stalled = false;
-        position = 0;
-        //move(0);
-    }
     if(home_dir == DIR_BOTH || home_dir == DIR_POS)
     {
         dir(DIR_POS);
@@ -182,14 +187,39 @@ void LinearStage::home(int8_t home_dir)
             delayMicroseconds(HOMING_SPEED);
             step();
         }
-        stalled = false;
-        endstop = position;
         #ifdef DEBUG
-        Serial.print(F("  endstop:"));
-        Serial.println(position,DEC);
+        Serial.print(F("  endstop found: "));
+        Serial.println(position);
         #endif
+        stalled = false;
+        endstop = position; // find endstop first
+        //move(0);
+    }
+    if(home_dir == DIR_BOTH || home_dir == DIR_NEG)
+    {
+        dir(DIR_NEG);
+        while(!stalled)
+        {
+            delayMicroseconds(HOMING_SPEED);
+            step();
+        }
+        stalled = false;
+        #ifdef DEBUG
+        Serial.print(F("  home found: "));
+        Serial.println(position);
+        #endif
+        if(home_dir == DIR_BOTH)
+        {
+            endstop -= position; // reposition endstop relative to new home
+        }
+        position = 0;
         //move(endstop);
     }
+    #ifdef DEBUG
+    Serial.print(F("  range: [0.00 (mm), "));
+    Serial.print(float(endstop)/float(STEPMM));
+    Serial.println(F(" (mm)]"));
+    #endif
 
     stallguard(false);
     stealthchop(true);
@@ -217,7 +247,7 @@ void LinearStage::calibrate()
     uint16_t sg_value_max = 0;
     bool sgt_increase = true;
     bool sg_zero = true;
-    const unsigned long tstep = (60ul * 1000ul * 1000ul * STEP_DEG / (SG2_TUNE_RPM * MICROSTEPS * 360ul)); // us between steps
+    const unsigned long tstep = SG2_TUNE_TSTEP; // us between steps
     unsigned long nexttime = micros();
 
     while(!done_tuning)
@@ -347,41 +377,64 @@ bool LinearStage::search()
     return true;
 }
 
-void LinearStage::move(float x, float dx, float ddx)
+void LinearStage::move_rel(float x, float dx, float ddx)
 {
-    dir(DIR_POS);
+    move(x*STEPMM, dx*STEPMM, ddx*STEPMM, true);
+}
 
-    float ts = 1./1000000;
-    target = (int32_t)(x*STEPMM+0.5);
-    speed = dx*STEPMM*ts;
-    accel = ddx*STEPMM*ts*ts;
+void LinearStage::move_abs(float x, float dx, float ddx)
+{
+    move(x*STEPMM - position, dx*STEPMM, ddx*STEPMM, true);
+}
+
+
+void LinearStage::move(float x, float dx, float ddx, bool limit)
+{
+    const float ts = 1./1000000;
+  
+    float speed = dx*ts;
+    float accel = 0.5*ddx*ts*ts; // pre-calculate 0.5 in t² * 0.5*accel
     float speed_inv = 1. / speed;
     float accel_inv = 1. / accel;
+    target = (int32_t)(x+0.5);
+    target>position ? dir(DIR_POS) : dir(DIR_NEG); // set direction of movement
 
     #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
-    Serial.println(F(" move"));
+    Serial.print(number);
+    Serial.println(F("  move"));
     Serial.print(F("  pos: "));
-    Serial.print(x,DEC);
-    Serial.print(F("  speed: "));
-    Serial.print(dx,DEC);
-    Serial.print(F("  accel: "));
-    Serial.println(ddx,DEC);
+    Serial.print(x);
+    Serial.print(F(" (steps)  speed: "));
+    Serial.print(dx);
+    Serial.print(F(" (steps/s)  accel: "));
+    Serial.print(ddx);
+    Serial.println(F(" (steps/s²)"));
     #endif
 
-    //
-    //            _______
-    //           /|      |\ 
-    //          / |      |  \ 
-    //       __/  |      |   \__
-    //         |  |      |   |
-    //         |tr|--ts--|tr |
-    //         0  1      2   3
-    //
+    if(limit && (target < 0 || target > endstop)) // check limits
+    {
+        target = constrain(target, 0, endstop);
+        #ifdef DEBUG
+        Serial.println(F("  WARNING out of range!"));
+        Serial.print(F("  new target: "));
+        Serial.print(x);
+        Serial.println(F(" (steps)"));
+    #endif
 
-    uint32_t d0, d1, d2, d3; // ramp start, slew start, slew end, ramp end
-    uint32_t t0, t1, t2, t3;
+    }
+
+    //   Trapezoidal Speed Profile   //
+    //            ________           //
+    //           /|      |\          //
+    //          / |      | \         //
+    //       __/  |      |  \__      //
+    //         |  |      |  |        //
+    //         |tr|--ts--|tr|        //
+    //         0  1      2  3        //
+
+    uint32_t d0, d1, d2, d3; // step # for ramp start, slew start, slew end, ramp end
+    uint32_t t0, t1, t2, t3; // as above, but time expressed in units of ts
 
     d0 = 0; // distance to start
     d3 = abs(target);// - position); // distance to end
@@ -422,6 +475,7 @@ void LinearStage::move(float x, float dx, float ddx)
     Serial.println(t3,DEC);
     #endif
     
+    // calculations for time to next step
     //         t0 = now
     // d<d1  d(t) = t*t*accel
     //       t(d) = sqrt(d/accel)
@@ -432,30 +486,23 @@ void LinearStage::move(float x, float dx, float ddx)
     // d<d3  d(t) = d2 + (t-t2)(speed-(t-t2)*accel)
     //       d(t) = d3 - (t3-t)(t3-t)*accel
     //       t(d) = t3 - sqrt((d3-d)/accel)
-
-    uint8_t stage = 0; // 0=accel, 1=slew, 2=decel, 3=stop
+    
     uint32_t t_next = 0;
     uint32_t t_start = micros();
-    ramping = true;
-    for(uint32_t step=0;step<=d3;step++)
+    state = MOVE_ACCEL;
+    for(uint32_t steps=0;steps<=d3;steps++)
     {
+        switch(state)
+        {
+            case MOVE_ACCEL: t_next = t0 + (uint32_t)(sqrt(float(steps)*accel_inv)); break;
+            case MOVE_SLEW:  t_next = t1 + (uint32_t)((float)(steps-d1)*speed_inv); break;
+            case MOVE_DECEL: t_next = t3 - (uint32_t)(sqrt((float)(d3-steps)*accel_inv)); break;
+        }
 
-        if(stage==0)
-            t_next = t0 + (uint32_t)(sqrt(float(step)*accel_inv));
-        if(stage==1)
-            t_next = t1 + (uint32_t)((float)(step-d1)*speed_inv);
-        if(stage==2)
-            t_next = t3 - (uint32_t)(sqrt((float)(d3-step)*accel_inv));
-        if(step==d1)
-        {
-            stage = 1;
-            ramping = false;
-        }
-        if(step==d2)
-        {
-            stage = 2;
-            ramping = true;
-        }
+        if(steps==d1) state = MOVE_SLEW;
+        else if(steps==d2) state = MOVE_DECEL;
+        else if(steps==d3) state = MOVE_STOP;
+        
         while(true)
         {
             if(micros()>=(t_next+t_start))
@@ -463,10 +510,17 @@ void LinearStage::move(float x, float dx, float ddx)
                 break;
             }
         }
-        this->step();   
+        step();   
     }
-    ramping = false;
     #ifdef DEBUG
     Serial.println(F("  move complete"));
     #endif
+}
+
+void LinearStage::wait_move()
+{
+    while(state != MOVE_STOP && state != MOVE_STALLED)
+    {
+        delay(1);
+    }
 }
