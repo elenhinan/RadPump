@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <TMC2130Stepper.h>
+#include "EventTimer.h"
 
 #define DEBUG
 
@@ -15,7 +16,7 @@
 #define STEP_DEG 1.8 // deg per step
 #define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2
 #define SG2_REP 8 // repetitions per SGT value
-#define HOMING_SPEED 100
+#define HOMING_SPEED 200
 #define TMC2130_FLCK 13000000 // TMC2130 internal fclk
 
 // macros
@@ -26,26 +27,12 @@
 #define STEPMM MM2STEP(1)
 #define SG2_TUNE_TSTEP (60ul * 1000ul * 1000ul * STEP_DEG / (SG2_TUNE_RPM * MICROSTEPS * 360ul))
 
-inline uint32_t sqrt32(uint32_t n) 
-{ 
-    uint32_t c = 0x8000; 
-    uint32_t g = 0x8000; 
-    for(;;) { 
-        if(g*g > n)
-            g ^= c; 
-        c >>= 1; 
-        if(c == 0)
-            return g; 
-        g |= c; 
-    } 
-}
-
 typedef volatile uint8_t PortReg;
 typedef uint8_t PortMask;
 
 static uint8_t LinearStageNumber = 0;
 
-class LinearStage
+class LinearStage : public TimedEvent
 {
 private:
     // hw stuff
@@ -67,16 +54,27 @@ private:
 
     // movement
     int8_t direction;
-    int32_t position;
+    int32_t volatile position;
     int32_t endstop;
-    int32_t target;
     volatile uint8_t state;
-    
-    volatile bool stalled;
+    bool volatile stalled;
 
+    // movement planner
+    int32_t planner_target;
+    uint32_t planner_step;
+    uint32_t planner_next_time;
+    float planner_speed;
+    float planner_accel;
+    float planner_speed_inv;
+    float planner_accel_inv;
+    uint32_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
+    uint32_t planner_t0, planner_t1, planner_t2, planner_t3; // as above, but time expressed in units of ts
+    void planner_init(float x, float dx, float ddx, bool limit, uint32_t start_time);
+    bool planner_advance();
+
+    // other functions
     void setup_driver();
-    void move(float x, float dx, float ddx, bool limit);
-    static void setup_timer();
+    void move(float x, float dx, float ddx, bool limit, uint32_t start_time);
 
 public:
     static const int8_t DIR_POS = 1;
@@ -104,10 +102,12 @@ public:
     void home(int8_t home_dir);
     void calibrate();
     bool search();
-    inline int32_t get_home() { return 0; }
-    inline int32_t get_endstop() { return endstop; }
-    inline int32_t get_position() { return position; }
-    void move_abs(float x, float dx, float ddx);
-    void move_rel(float x, float dx, float ddx);
+    int32_t get_home() { return 0; }
+    int32_t get_endstop() { return endstop; }
+    int32_t get_position() { return position; }
+    void move_abs(float x, float dx, float ddx, uint32_t start_time);
+    void move_rel(float x, float dx, float ddx, uint32_t start_time);
     void wait_move();
+    bool calc_next_move(uint32_t &time, uint8_t &port);
+    void event_execute();
 };
