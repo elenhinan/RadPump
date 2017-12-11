@@ -11,11 +11,14 @@
 
 #define BAUDRATE 115200
 
-LinearStage pumpA(STEP_EN, STEPA_DIR, STEPA_STEP, STEPA_CS, STEPA_STALL);
-//LinearStage pumpB(STEP_EN, STEPB_DIR, STEPB_STEP, STEPB_CS, STEPB_STALL);
+LinearStage linearstageA(STEP_EN, STEPA_DIR, STEPA_STEP, STEPA_CS, STEPA_STALL);
+//LinearStage linearstageB(STEP_EN, STEPB_DIR, STEPB_STEP, STEPB_CS, STEPB_STALL);
 
 Adafruit_SH1106 displayA(OLED_DC, OLED_RST, OLEDA_CS);
 Adafruit_SH1106 displayB(OLED_DC, OLED_RST, OLEDB_CS);
+
+Injector injectorA(&linearstageA, &displayA);
+//Injector injectorB(linearstageB, displayB);
 
 void setup() {
     // disable both drivers before setup
@@ -51,36 +54,31 @@ void setup() {
     pinMode(JSTK_SW, INPUT_PULLUP);
 
     EventTimer::Init();
-    EventTimer::RegisterSource(&pumpA);
+    EventTimer::RegisterSource(&linearstageA);
 
     // init steppers
-    pumpA.init();
+    linearstageA.init();
     //pumpB.init();
 
     // enable both drivers
     digitalWrite(STEP_EN, LOW); // enable driver
 
-    //pumpA.calibrate();
-    //pumpA.home(LinearStage::DIR_BOTH);
-    //pumpA.dir(LinearStage::DIR_NEG);
+    //linearstageA.calibrate();
+    //linearstageA.home(LinearStage::DIR_BOTH);
+    //linearstageA.dir(LinearStage::DIR_NEG);
     delay(2000);
-    //pumpA.search();
-    pumpA.home(LinearStage::DIR_BOTH);
-    pumpA.move_abs(40,8.,20.0, 100);
+    //linearstageA.search();
+    linearstageA.home(LinearStage::DIR_NEG);
+    linearstageA.move_abs(45,2.,4.0, 100);
 }
 
 void loop() {
     displayA.clearDisplay();
-    displayA.setTextSize(1);
-    displayA.setTextColor(WHITE);
-    displayA.setCursor(0,32);
-
-    displayA.print(F("pos: "));
-    displayA.println(pumpA.get_position(),DEC);
+    injectorA.update_display();
     displayA.display();
     delay(25);
-    //if(pumpA.event_ready && pumpA.event_time <= micros())
+    //if(linearstageA.event_ready && linearstageA.event_time <= micros())
     //{
-        //pumpA.event_execute();
+        //linearstageA.event_execute();
     //}
 }

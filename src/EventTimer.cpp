@@ -71,6 +71,10 @@ ISR(TIMER1_COMPA_vect)
             }
         }
     }
+    if (trigger_time.uint16H > internal_time.uint16H || source_ptr == NULL) // if trigger due after more than 65535 ticks or source_ptr == NULL
+    {
+        TIMSK1 &= ~(1 << OCIE1A); // disable compare interrupt
+    }
     OCR1A = trigger_time.uint16L;
 }
 
@@ -97,6 +101,10 @@ void Prime()
         if(trigger_time.uint16H == internal_time.uint16H && source_ptr != NULL) // if trigger time high-word is 0, active more fine grained interrupt
         {
             TIMSK1 |= (1 << OCIE1A);
+        }
+        else
+        {
+            TIMSK1 &= ~(1 << OCIE1A);
         }
 
         #ifdef DEBUG

@@ -22,6 +22,8 @@ LinearStage::LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t
     stepMask = digitalPinToBitMask(pinSTEP);
     dirPort = portOutputRegister(digitalPinToPort(pinDIR));
     dirMask = digitalPinToBitMask(pinDIR);
+
+    endstop = MM2STEP(LENGTH);
 }
 
 void LinearStage::init()
@@ -48,7 +50,7 @@ void LinearStage::init()
     this->stepper = new TMC2130Stepper(pinEN, pinDIR, pinSTEP, pinCS);
     this->setup_driver();
 
-    stalled = false;
+    state = MOVE_STOP;
     stallguard_enabled = false;
     
     switch(digitalPinToInterrupt(pinSTALL))
@@ -66,16 +68,10 @@ void LinearStage::init()
 
 void LinearStage::stall_event()
 {
-    stalled = stallguard_enabled;
-    // if(stallguard_enabled)
-    // {
-    //     state = MOVE_STALLED;
-    //     #ifdef DEBUG
-    //     Serial.print("Stage #");
-    //     Serial.print(number);
-    //     Serial.println(" Stall!");
-    //     #endif
-    // }
+    if(stallguard_enabled)
+    {
+         state = MOVE_STALLED;
+    }
 }
 
 void LinearStage::setup_driver()
@@ -87,9 +83,9 @@ void LinearStage::setup_driver()
     stepper->interpolate(1);
     stepper->external_ref(0);
     stepper->internal_sense_R(0);
-    //stepper->ihold(15);
-    //stepper->irun(31);
-    stepper->hold_delay(5);
+    //stepper->ihold(15); // standstill current 0-31/31
+    //stepper->irun(31); // running current 0-31/31
+    stepper->hold_delay(32);
     stepper->power_down_delay(255);
     
     stepper->random_off_time(0);
@@ -105,39 +101,23 @@ void LinearStage::setup_driver()
     stepper->sg_filter(0);
 
     // stealthchop settings
-    //stepperA.stealth_freq(1);
+    stepper->stealth_freq(1);
     //stepperA.stealth_autoscale(1);
     //stepperA.stealth_gradient(5);
     //stepperA.stealth_amplitude(255);
     //stepperA.sg_stall_value(0);
 
-    // stepper->stealthChop(0);
-    // stepper->stealth_max_speed(0xFFFFF);
-    // stepper->coolstep_min_speed(0xFFFFF);
-    // stepper->fullstep_threshold(0);
-    // stepper->high_speed_mode(0);
-    // stepper->mode_sw_speed(0);
 
     // set auto switch from stealthstep
     //stepper->stealth_max_speed(MMS2TSTEP(20)); // disable stealthstep above this velocity
-    //stepper->coolstep_min_speed(MMS2TSTEP(0.5)); // disable coolstep and stallguard below this velocity
+    //stepper->coolstep_min_speed(MMS2TSTEP(8.0)); // disable coolstep and stallguard below this velocity
     //stepper->mode_sw_speed(MMS2TSTEP(40));    // fullstep above this speed
     
-    // homing
-    //stepperA.coolstep_min_speed(0xfffff);
-    //stepperA.stealthChop(0);
-    //stepperA.diag1_stall(1);
-    
-    //stepperA.vhighfs(0);
-    //stepperA.vhighchm(0);
-    //stepperA.en_pwm_mode(0);
-
     stealthchop(true);
 }
 
 void LinearStage::stallguard(bool enable)
 {
-    stalled = false;
     stallguard_enabled = enable;
     #ifdef DEBUG
     Serial.print(F("  stallguard:"));
@@ -148,7 +128,7 @@ void LinearStage::stallguard(bool enable)
 void LinearStage::stealthchop(bool enable)
 {
     stepper->stealthChop(enable);
-    stepper->coolstep_min_speed(enable?0:0xfffff);
+    stepper->coolstep_min_speed(enable?0:uint16_t(FREQ2TSTEP(MIN_SD_SPEED)));
     #ifdef DEBUG
     Serial.print(F("  stealthchop:"));
     Serial.println(enable,DEC);
@@ -166,39 +146,35 @@ void LinearStage::home(int8_t home_dir)
     stallguard(true);
     if(home_dir == DIR_BOTH || home_dir == DIR_POS)
     {
-        dir(DIR_POS);
-        while(!stalled)
+        move(LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false, 0); // move up to 110% of defined length
+        wait_move(); // wait for stall (or end of move)
+
+        if(state == MOVE_STALLED)
         {
-            delayMicroseconds(HOMING_SPEED);
-            step();
+            #ifdef DEBUG
+            Serial.print(F("  endstop found: "));
+            Serial.println(position);
+            #endif
+            endstop = position; // find endstop first
         }
-        #ifdef DEBUG
-        Serial.print(F("  endstop found: "));
-        Serial.println(position);
-        #endif
-        stalled = false;
-        endstop = position; // find endstop first
-        //move(0);
     }
     if(home_dir == DIR_BOTH || home_dir == DIR_NEG)
     {
-        dir(DIR_NEG);
-        while(!stalled)
+        move(-LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false, 0); // move up to 110% of defined length
+        wait_move(); // wait until move done (because of a stall)
+
+        if(state == MOVE_STALLED)
         {
-            delayMicroseconds(HOMING_SPEED);
-            step();
+            #ifdef DEBUG
+            Serial.print(F("  home found: "));
+            Serial.println(position);
+            #endif
+            if(home_dir == DIR_BOTH)
+            {
+                endstop -= position; // reposition endstop relative to new home
+            }
+            position = 0;
         }
-        stalled = false;
-        #ifdef DEBUG
-        Serial.print(F("  home found: "));
-        Serial.println(position);
-        #endif
-        if(home_dir == DIR_BOTH)
-        {
-            endstop -= position; // reposition endstop relative to new home
-        }
-        position = 0;
-        //move(endstop);
     }
     #ifdef DEBUG
     Serial.print(F("  range: [0.00 (mm), "));
@@ -336,7 +312,7 @@ bool LinearStage::search()
         step();
     }
 
-    while(!stalled && position > 0 && position < endstop)
+    while(state != MOVE_STALLED && position > 0 && position < endstop)
     {
         if(position%MICROSTEPS == 0)
         {
@@ -488,56 +464,34 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
 }
 
 bool LinearStage::planner_advance() {
-    
-    if(planner_step > planner_d3)
+    switch(state) // remove state and change to if's
     {
-        state = MOVE_STOP;
-        #ifdef DEBUG
-        Serial.print(F("  end: "));
-        Serial.println(position, DEC);
-        #endif
-        return false;
+        case MOVE_ACCEL:    planner_next_time = planner_t0 + (uint32_t)(sqrt(float(planner_step)*planner_accel_inv)); break;
+        case MOVE_SLEW:     planner_next_time = planner_t1 + (uint32_t)((float)(planner_step-planner_d1)*planner_speed_inv); break;
+        case MOVE_DECEL:    planner_next_time = planner_t3 - (uint32_t)(sqrt((float)(planner_d3-planner_step)*planner_accel_inv)); break;
+        case MOVE_STOP:     return false;
+        case MOVE_STALLED:  return false;
     }
-    else
-    {
-        switch(state) // remove state and change to if's
-        {
-            case MOVE_ACCEL: planner_next_time = planner_t0 + (uint32_t)(sqrt(float(planner_step)*planner_accel_inv)); break;
-            case MOVE_SLEW:  planner_next_time = planner_t1 + (uint32_t)((float)(planner_step-planner_d1)*planner_speed_inv); break;
-            case MOVE_DECEL: planner_next_time = planner_t3 - (uint32_t)(sqrt((float)(planner_d3-planner_step)*planner_accel_inv)); break;
-        }
 
-        if(planner_step==planner_d1) state = MOVE_SLEW;
-        else if(planner_step==planner_d2) state = MOVE_DECEL;
-        
-        // while(true)
-        // {
-        //     if(!movebuffer_isfull())
-        //     {
-        //         break;
-        //     }
-        // }
-        //movebuffer_push((uint16_t)(t_next-t_prev));
-        //TIMSK1 |= (1 << OCIE1A);
-        //t_prev = t_next;
-        // while(true)
-        // {
-        //     if(micros()>=(t_next+t_start))
-        //     {
-        //         break;
-        //     }
-        // }
-        // step();
-        
-        planner_step++;
-        return true;
-    }
+    if(planner_step==planner_d1) state = MOVE_SLEW;
+    else if(planner_step==planner_d2) state = MOVE_DECEL;
+    else if(planner_step==planner_d3) state = MOVE_STOP;
+    
+    planner_step++;
+    return true;
+}
+
+void LinearStage::stop()
+{
+    state = MOVE_STOP;
+    event_ready = false;
+    event_time = 0xFFFFFFFF;
 }
 
 void LinearStage::wait_move()
 {
     while(state != MOVE_STOP && state != MOVE_STALLED)
     {
-        delay(1);
+        delayMicroseconds(10);
     }
 }

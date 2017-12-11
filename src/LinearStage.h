@@ -9,19 +9,20 @@
 #define DEBUG
 
 // config
-#define LENGTH 80 // ~78mm length
+#define LENGTH 77.5 // ~78mm length
 #define STALL_VALUE 21 // [-64..63]
 #define MICROSTEPS 16
 #define THREAD_PITCH 2.0 // 2mm/rev
 #define STEP_DEG 1.8 // deg per step
 #define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2
 #define SG2_REP 8 // repetitions per SGT value
-#define HOMING_SPEED 200
-#define TMC2130_FLCK 13000000 // TMC2130 internal fclk
+#define HOMING_SPEED 5 // mm/s
+#define MIN_SD_SPEED 1 // mm/s
+#define TMC2130_FLCK 12000000 // TMC2130 internal fclk
 
 // macros
-#define MM2STEP(x) (x / THREAD_PITCH) * (360 / STEP_DEG) * MICROSTEPS // mm/s to freq (fullstep)
-#define FREQ2TSTEP(x) TMC2130_FLCK / (x * 256) // fullsteps/s to clock cycles
+#define MM2STEP(x) (x / THREAD_PITCH) * (360 / STEP_DEG) * MICROSTEPS // mm/s to freq
+#define FREQ2TSTEP(x) TMC2130_FLCK / (x * (256/MICROSTEPS)) // clock cycles per 256 microstep
 #define MMS2TSTEP(x) FREQ2TSTEP(MM2STEP(x)) // mm/s to tstep value
 #define MMSTEP (1.0/MM2STEP(1))
 #define STEPMM MM2STEP(1)
@@ -57,7 +58,6 @@ private:
     int32_t volatile position;
     int32_t endstop;
     volatile uint8_t state;
-    bool volatile stalled;
 
     // movement planner
     int32_t planner_target;
@@ -93,7 +93,7 @@ public:
     LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1);
     void init();
     void stall_event();
-    inline void step() { if (!stalled) { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; } }
+    inline void step() { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; }
     inline void dir(int8_t direction) { this->direction = direction; direction == DIR_POS ? *dirPort |=  dirMask : *dirPort &= ~dirMask; }
     inline void reverse() { direction = -direction; *dirPort ^= dirMask; }
     inline uint16_t get_SG() { return stepper->sg_result(); }
@@ -102,9 +102,13 @@ public:
     void home(int8_t home_dir);
     void calibrate();
     bool search();
+    void stop();
     int32_t get_home() { return 0; }
-    int32_t get_endstop() { return endstop; }
-    int32_t get_position() { return position; }
+    int32_t get_endstop_steps() { return endstop; }
+    int32_t get_position_steps() { return position; }
+    float get_endstop_mm() { return float(endstop)*(1./float(STEPMM)); }
+    float get_position_mm() { return float(position)*(1./float(STEPMM)); }
+    
     void move_abs(float x, float dx, float ddx, uint32_t start_time);
     void move_rel(float x, float dx, float ddx, uint32_t start_time);
     void wait_move();

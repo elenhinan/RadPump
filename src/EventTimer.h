@@ -28,7 +28,7 @@ namespace EventTimer
     // variables
     extern uint32_split_t internal_time;
     extern uint8_t source_count;
-    static const float dt = 1./1000000.;//DELTA_T;
+    static const float dt = DELTA_T;
     extern uint32_split_t trigger_time;
     extern TimedEvent* source_ptr;
     extern TimedEvent* source_list[8];
