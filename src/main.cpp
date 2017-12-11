@@ -11,7 +11,7 @@
 
 #define BAUDRATE 115200
 
-LinearStage linearstageA(STEP_EN, STEPA_DIR, STEPA_STEP, STEPA_CS, STEPA_STALL);
+LinearStage linearstageA(STEP_EN, STEPA_STEP, STEPA_CS, STEPA_STALL);
 //LinearStage linearstageB(STEP_EN, STEPB_DIR, STEPB_STEP, STEPB_CS, STEPB_STALL);
 
 Adafruit_SH1106 displayA(OLED_DC, OLED_RST, OLEDA_CS);

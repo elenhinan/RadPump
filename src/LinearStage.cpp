@@ -10,7 +10,7 @@ uint32_t *step_timer_time;
 void int0_callback() { int0_cb_instance->stall_event(); }
 void int1_callback() { int1_cb_instance->stall_event(); }
 
-LinearStage::LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1)
+LinearStage::LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1)
 {
     number = LinearStageNumber++; // keep track of number of initalized objects
     this->pinEN = pinEN;
@@ -20,8 +20,6 @@ LinearStage::LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t
     this->pinSTALL = pinDIAG1;
     stepPort = portOutputRegister(digitalPinToPort(pinSTEP));
     stepMask = digitalPinToBitMask(pinSTEP);
-    dirPort = portOutputRegister(digitalPinToPort(pinDIR));
-    dirMask = digitalPinToBitMask(pinDIR);
 
     endstop = MM2STEP(LENGTH);
 }

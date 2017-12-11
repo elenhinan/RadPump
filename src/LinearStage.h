@@ -47,8 +47,6 @@ private:
     uint8_t number;
     PortReg *stepPort;
     PortMask stepMask;
-    PortReg *dirPort;
-    PortMask dirMask;
 
     // driver settings
     int8_t stepper_sgt;
@@ -90,12 +88,11 @@ public:
     static const uint8_t CHOPPER_STALLGUARD = 2;
     static const uint8_t CHOPPER_AUTO = 3;
 
-    LinearStage(uint8_t pinEN, uint8_t pinDIR, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1);
+    LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1);
     void init();
     void stall_event();
     inline void step() { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; }
-    inline void dir(int8_t direction) { this->direction = direction; direction == DIR_POS ? *dirPort |=  dirMask : *dirPort &= ~dirMask; }
-    inline void reverse() { direction = -direction; *dirPort ^= dirMask; }
+    inline void dir(int8_t direction) { this->direction = direction; stepper->shaft_dir(direction == DIR_POS); }
     inline uint16_t get_SG() { return stepper->sg_result(); }
     void stallguard(bool enable);
     void stealthchop(bool enable);
