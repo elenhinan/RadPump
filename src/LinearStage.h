@@ -93,7 +93,7 @@ public:
     void stall_event();
     inline void step() { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; }
     inline void dir(int8_t direction) { this->direction = direction; stepper->shaft_dir(direction == DIR_POS); }
-    inline uint16_t get_SG() { return stepper->sg_result(); }
+    inline uint16_t get_sg() { return stepper->sg_result(); }
     void stallguard(bool enable);
     void stealthchop(bool enable);
     void home(int8_t home_dir);

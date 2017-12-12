@@ -285,52 +285,40 @@ bool LinearStage::search()
     stealthchop(false);
     stallguard(true);
 
-    dir(DIR_NEG);
     uint32_t sg_val_avg = 0;
     uint32_t sg_val_num = 0;
-    for(int i=0;i<2024;i++)
-    {
-        delayMicroseconds(HOMING_SPEED);
-        if(position%MICROSTEPS == 0)
-        {
-            sg_val_avg += stepper->sg_result();
-            sg_val_num++;
-        }
-        step();
-    }
-    uint16_t sg_val_thr = sg_val_avg*100/(sg_val_num * 90); // threshold
-    #ifdef DEBUG
-    Serial.print(F("  threshold: "));
-    Serial.println(sg_val_thr,DEC);
-    delay(2000);
-    #endif
-    for(int i=0;i<2024;i++)
-    {
-        delayMicroseconds(HOMING_SPEED);
-        step();
-    }
+    //move_abs(70., 5.0, 5.0, 0); // move up to 20mm
+    //wait_move();
+    //move_abs(65., 5.0, 50.0, 0); // move up to 20mm
+    //int32_t prev_position = position;
+    // while(state != MOVE_STOP && state != MOVE_STALLED)
+    // {
+    //     if(prev_position - position < MICROSTEPS && state == MOVE_SLEW)
+    //     {
+    //         sg_val_avg += stepper->sg_result();
+    //         sg_val_num++;
+    //         prev_position = position;
+    //     }
+    // }
+    // uint32_t sg_val_thr = sg_val_avg*100/(sg_val_num * 90); // threshold
+    // #ifdef DEBUG
+    // Serial.print(F("  threshold: "));
+    // Serial.println(sg_val_thr,DEC);
+    // delay(2000);
+    // #endif
+    move_abs(20, 5.0, 5.0, 0); // move up to 20mm
 
-    while(state != MOVE_STALLED && position > 0 && position < endstop)
+    while(state != MOVE_STOP && state != MOVE_STALLED)
     {
-        if(position%MICROSTEPS == 0)
-        {
-            uint16_t sg = stepper->sg_result();
-            Serial.println(sg,DEC);
-            if(sg <= sg_val_thr)
-            {
-                break;
-            }
-        }
-        delayMicroseconds(HOMING_SPEED);
-        
-        step();
+        Serial.println(stepper->sg_result(),DEC);
+        delay(10);
     }
     #ifdef DEBUG
     Serial.print(F("  found: 0 ("));
     Serial.print(position,DEC);
     Serial.println(')');
     #endif
-    position = 0;
+    //position = 0;
     stealthchop(true);
     stallguard(false);
     return true;
@@ -338,12 +326,12 @@ bool LinearStage::search()
 
 void LinearStage::move_rel(float x, float dx, float ddx, uint32_t start_time)
 {
-    move(x*STEPMM, dx*STEPMM, ddx*STEPMM, true, start_time);
+    move(x*STEPMM + position, dx*STEPMM, ddx*STEPMM, true, start_time);
 }
 
 void LinearStage::move_abs(float x, float dx, float ddx, uint32_t start_time)
 {
-    move(x*STEPMM - position, dx*STEPMM, ddx*STEPMM, true, start_time);
+    move(x*STEPMM, dx*STEPMM, ddx*STEPMM, true, start_time);
 }
 
 void LinearStage::move(float x, float dx, float ddx, bool limit, uint32_t start_time)
@@ -377,12 +365,12 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
     Serial.print(F("  ts: "));
     Serial.println(EventTimer::dt,DEC);
     Serial.print(F("  pos: "));
-    Serial.print(x);
-    Serial.print(F(" (steps)  speed: "));
-    Serial.print(dx);
-    Serial.print(F(" (steps/s)  accel: "));
-    Serial.print(ddx);
-    Serial.println(F(" (steps/s²)"));
+    Serial.print(x/float(STEPMM));
+    Serial.print(F(" (mm)  speed: "));
+    Serial.print(dx/float(STEPMM));
+    Serial.print(F(" (mm/s)  accel: "));
+    Serial.print(ddx/float(STEPMM));
+    Serial.println(F(" (mm/s²)"));
     #endif
 
     if(limit && (planner_target < 0 || planner_target > endstop)) // check limits
@@ -391,9 +379,9 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
         #ifdef DEBUG
         Serial.println(F("  WARNING out of range!"));
         Serial.print(F("  new target: "));
-        Serial.print(planner_target);
-        Serial.println(F(" (steps)"));
-    #endif
+        Serial.print(planner_target*STEPMM);
+        Serial.println(F(" (mm)"));
+        #endif
 
     }
 
@@ -407,7 +395,7 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
     //         0  1      2  3        //
 
     planner_d0 = 0; // distance to start
-    planner_d3 = abs(planner_target);// - position); // distance to end
+    planner_d3 = abs(planner_target - position); // distance to end
     planner_d1 = planner_speed * planner_speed / (planner_accel*2); // distance to slew start
 
     if(2*planner_d1 < planner_d3) // enough space to accel and decel
@@ -425,25 +413,6 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
     planner_t1 = (uint32_t)(planner_t0 + sqrt(float(planner_d1)/planner_accel))+0.5;
     planner_t2 = (uint32_t)(planner_t1 + float(planner_d2-planner_d1)/planner_speed+0.5);
     planner_t3 = (uint32_t)(planner_t2 + sqrt(float(planner_d3-planner_d2)/planner_accel)+0.5);
-
-    #ifdef DEBUG
-    Serial.print(F("  d0: "));
-    Serial.print(planner_d0,DEC);
-    Serial.print(F("\tt0: "));
-    Serial.println(planner_t0,DEC);
-    Serial.print(F("  d1: "));
-    Serial.print(planner_d1,DEC);
-    Serial.print(F("\tt1: "));
-    Serial.println(planner_t1,DEC);
-    Serial.print(F("  d2: "));
-    Serial.print(planner_d2,DEC);
-    Serial.print(F("\tt2: "));
-    Serial.println(planner_t2,DEC);
-    Serial.print(F("  d3: "));
-    Serial.print(planner_d3,DEC);
-    Serial.print(F("\tt3: "));
-    Serial.println(planner_t3,DEC);
-    #endif
     
     // calculations for time to next step
     //         t0 = now
@@ -471,8 +440,8 @@ bool LinearStage::planner_advance() {
         case MOVE_STALLED:  return false;
     }
 
-    if(planner_step==planner_d1) state = MOVE_SLEW;
-    else if(planner_step==planner_d2) state = MOVE_DECEL;
+    if(planner_step==planner_d2) state = MOVE_DECEL; // check for d2 first, in case d1==d2 then skip slewing
+    else if(planner_step==planner_d1) state = MOVE_SLEW;
     else if(planner_step==planner_d3) state = MOVE_STOP;
     
     planner_step++;

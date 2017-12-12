@@ -12,8 +12,8 @@
 #define STEPA_STEP  5
 #define STEPA_CS    4
 #define STEPA_STALL 3
-#define STEPB_STEP  A4
-#define STEPB_CS    A5
+#define STEPB_STEP  6
+#define STEPB_CS    A3
 #define STEPB_STALL 2
 #define JSTK_X      A0
 #define JSTK_Y      A1

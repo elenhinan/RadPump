@@ -56,8 +56,7 @@ void Injector::update_display()
     float vol = (pos - syringe.empty) * syringe.ml_per_mm;
 
     draw_syringe(vol);
-
-    display->setCursor(0,32);
+    display->setCursor(0,24);
     print_volume(vol);
 
     if(mode == MODE_ACTIVITY)
@@ -102,20 +101,24 @@ void Injector::draw_syringe(float volume)
     const int16_t pointy_w = 12;
     const int16_t pointy_h = 5;
     const int16_t cyl_x = pointy_w - 1;
-    const int16_t cyl_w = 64;
+    const int16_t cyl_w = 72;
     const int16_t cyl_h = 15;
     const int16_t liquid_x = cyl_x + 3;
     const int16_t liquid_h = cyl_h-6;
-    const int16_t pusher_w = 60;
+    //const int16_t pusher_w = 60;
     const int16_t pusher_h = 5;
     const int16_t pusher_h2 = cyl_h - 4;
-    int16_t liquid_w = int16_t((vol/syringe.volume) * float(cyl_w-4));
+    int16_t liquid_w = int16_t((vol/syringe.volume) * float(cyl_w-8));
     int16_t pusher_x = liquid_x + liquid_w + 2;
+    int16_t pusher_x2 = (cyl_x + cyl_w + 2) + vol*(127-2-(cyl_x + cyl_w + 2));
+    int16_t pusher_w = pusher_x2-pusher_x;
 
     display->drawRect(0, center_y-pointy_h/2, pointy_w, pointy_h, 1); // pointy end
     display->drawRect(cyl_x, center_y-cyl_h/2, cyl_w, cyl_h, 1); // cylinder
     display->drawFastVLine(cyl_x, center_y-pointy_h/2+1, pointy_h-2, 0); // remove front line to create open end
     display->drawFastVLine(cyl_x+cyl_w-1, center_y-cyl_h/2+1, cyl_h-2, 0); // remove back line to create open cylinder
+    display->drawFastHLine(cyl_x+cyl_w-2,center_y+cyl_h/2+1, 2, 1);
+    display->drawFastHLine(cyl_x+cyl_w-2,center_y-cyl_h/2-1, 2, 1);
     display->fillRect(liquid_x, center_y-liquid_h/2, liquid_w, liquid_h, 1); // liquid
     display->drawRect(pusher_x, center_y-pusher_h2/2, 2, pusher_h2, 1); // pusher plate
     display->drawRect(pusher_x, center_y-pusher_h/2, pusher_w, pusher_h, 1); // pusher rod
