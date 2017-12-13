@@ -11,7 +11,7 @@
 // config
 #define LENGTH 77.5 // ~78mm length
 #define STALL_VALUE 21 // [-64..63]
-#define MICROSTEPS 16
+#define MICROSTEPS 8
 #define THREAD_PITCH 2.0 // 2mm/rev
 #define STEP_DEG 1.8 // deg per step
 #define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2

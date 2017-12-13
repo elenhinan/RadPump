@@ -283,7 +283,7 @@ bool LinearStage::search()
     #endif
 
     stealthchop(false);
-    stallguard(true);
+    stallguard(false);
 
     uint32_t sg_val_avg = 0;
     uint32_t sg_val_num = 0;
@@ -306,13 +306,15 @@ bool LinearStage::search()
     // Serial.println(sg_val_thr,DEC);
     // delay(2000);
     // #endif
-    move_abs(20, 5.0, 5.0, 0); // move up to 20mm
+    move_abs(20, 1.0, 5.0, 0); // move up to 20mm
+	stepper->rms_current(100); // mA
 
     while(state != MOVE_STOP && state != MOVE_STALLED)
     {
         Serial.println(stepper->sg_result(),DEC);
-        delay(10);
+        delay(100);
     }
+
     #ifdef DEBUG
     Serial.print(F("  found: 0 ("));
     Serial.print(position,DEC);
@@ -352,9 +354,9 @@ void LinearStage::event_execute()
 void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_t start_time)
 {
     planner_speed = dx*EventTimer::dt;
-    planner_accel = 0.5*ddx*EventTimer::dt*EventTimer::dt; // pre-calculate 0.5 in t² * 0.5*accel
+    planner_accel = ddx*EventTimer::dt*EventTimer::dt;
     planner_speed_inv = 1. / planner_speed;
-    planner_accel_inv = 1. / planner_accel;
+    planner_accel_inv = 1. / (planner_accel * 0.5); // pre-calculate 0.5 i4. t² * 0.5*accel
     planner_target = (int32_t)(x+0.5);
     planner_target>position ? dir(DIR_POS) : dir(DIR_NEG); // set direction of movement
 
@@ -410,9 +412,9 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
 
     // use steps for each block to determine timing for each block
     planner_t0 = EventTimer::Now() + uint32_t((float)start_time*EventTimer::dt);
-    planner_t1 = (uint32_t)(planner_t0 + sqrt(float(planner_d1)/planner_accel))+0.5;
-    planner_t2 = (uint32_t)(planner_t1 + float(planner_d2-planner_d1)/planner_speed+0.5);
-    planner_t3 = (uint32_t)(planner_t2 + sqrt(float(planner_d3-planner_d2)/planner_accel)+0.5);
+    planner_t1 = (uint32_t)(planner_t0 + sqrt(float(planner_d1)*planner_accel_inv)+0.5);
+    planner_t2 = (uint32_t)(planner_t1 + float(planner_d2-planner_d1+1)*planner_speed_inv+0.5);
+    planner_t3 = (uint32_t)(planner_t2 + sqrt(float(planner_d3-planner_d2-1)*planner_accel_inv)+0.5);
     
     // calculations for time to next step
     //         t0 = now
@@ -427,7 +429,7 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
     //       t(d) = t3 - sqrt((d3-d)/accel)
     
     state = MOVE_ACCEL;
-    planner_step = 1;
+    planner_step = 0;
 }
 
 bool LinearStage::planner_advance() {
@@ -461,4 +463,8 @@ void LinearStage::wait_move()
     {
         delayMicroseconds(10);
     }
+    #ifdef DEBUG
+    Serial.print(F("  new position: "));
+    Serial.println(position);
+    #endif
 }

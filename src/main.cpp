@@ -69,8 +69,8 @@ void setup() {
     delay(2000);
     //linearstageA.search();
     linearstageA.home(LinearStage::DIR_NEG);
-    linearstageA.move_abs(71.8, 5., 4.0, 100);
-    //linearstageA.wait_move();
+    linearstageA.move_abs(40, 6., 4.0, 100);
+    linearstageA.wait_move();
     //delay(5000);
     //linearstageA.search();
 }
