@@ -10,17 +10,15 @@ uint32_t *step_timer_time;
 void int0_callback() { int0_cb_instance->stall_event(); }
 void int1_callback() { int1_cb_instance->stall_event(); }
 
-LinearStage::LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1)
+LinearStage::LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1, char name) :
+    pinEN(pinEN),
+    pinSTEP(pinSTEP),
+    pinCS(pinCS),
+    pinSTALL(pinDIAG1),
+    name(name)
 {
-    number = LinearStageNumber++; // keep track of number of initalized objects
-    this->pinEN = pinEN;
-    this->pinDIR = pinDIR;
-    this->pinSTEP = pinSTEP;
-    this->pinCS = pinCS;
-    this->pinSTALL = pinDIAG1;
     stepPort = portOutputRegister(digitalPinToPort(pinSTEP));
     stepMask = digitalPinToBitMask(pinSTEP);
-
     endstop = MM2STEP(LENGTH);
 }
 
@@ -28,12 +26,10 @@ void LinearStage::init()
 {
 #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
+    Serial.print(name);
     Serial.println(F(" initializing.."));
     Serial.print(F("  en: "));
     Serial.println(pinEN,DEC);
-    Serial.print(F("  dir: "));
-    Serial.println(pinDIR,DEC);
     Serial.print(F("  step: "));
     Serial.println(pinSTEP,DEC);
     Serial.print(F("  cs: "));
@@ -45,7 +41,7 @@ void LinearStage::init()
 
     stepper_sgt = STALL_VALUE;
 
-    this->stepper = new TMC2130Stepper(pinEN, pinDIR, pinSTEP, pinCS);
+    this->stepper = new TMC2130Stepper(pinEN, -1, pinSTEP, pinCS);
     this->setup_driver();
 
     state = MOVE_STOP;
@@ -137,7 +133,7 @@ void LinearStage::home(int8_t home_dir)
 {
     #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
+    Serial.print(name);
     Serial.println(F(" homing"));
     #endif
     stealthchop(false);
@@ -195,7 +191,7 @@ void LinearStage::calibrate()
 
     #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
+    Serial.print(name);
     Serial.println(F(" calibrating.."));
     #endif
     int8_t sgt = 0; // start at zero according to datasheet
@@ -278,7 +274,7 @@ bool LinearStage::search()
 {
     #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number,DEC);
+    Serial.print(name);
     Serial.println(F(" search"));
     #endif
 
@@ -318,7 +314,7 @@ bool LinearStage::search()
     #ifdef DEBUG
     Serial.print(F("  found: 0 ("));
     Serial.print(position,DEC);
-    Serial.println(')');
+    Serial.println(F(")"));
     #endif
     //position = 0;
     stealthchop(true);
@@ -362,10 +358,8 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
 
     #ifdef DEBUG
     Serial.print(F("Stage #"));
-    Serial.print(number);
+    Serial.print(name);
     Serial.println(F("  move"));
-    Serial.print(F("  ts: "));
-    Serial.println(EventTimer::dt,DEC);
     Serial.print(F("  pos: "));
     Serial.print(x/float(STEPMM));
     Serial.print(F(" (mm)  speed: "));
@@ -464,7 +458,8 @@ void LinearStage::wait_move()
         delayMicroseconds(10);
     }
     #ifdef DEBUG
-    Serial.print(F("  new position: "));
-    Serial.println(position);
+    Serial.print(F("  stop: "));
+    Serial.print(position/float(STEPMM));
+    Serial.println(F(" mm"));
     #endif
 }

@@ -1,74 +1,89 @@
 #pragma once
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
+#include <TimeLib.h>
 #include "LinearStage.h"
 
-// Syringe to/from eeprom
-#define SYRINGE_MAX 8
-#define SYRINGE_ADDR_START 0x20
-#define SYRINGE_ADDR_END (SYRINGE_ADDR_START + SYRINGE_MAX * sizeof(Syringe)
+// max isotopes and syringes stored in eeprom
+#define ISOTOPE_MAX 16
+#define SYRINGE_MAX 16
 
-class Syringe
+typedef struct
 {
-// variables
-public:
-    int8_t index;       // index in eeprom
-    char name[16];      // short name
-    float cal_factor;   // calibration factor for (full-empty)/volume
+    char name[8]; // up to 7 char
+    float halflife; // in minutes
+} Isotope;
+
+typedef struct
+{
+    char name[8];      // short name
     float volume;       // syringe volume
     float empty;        // mm from home when empty
     float full;         // mm from home when full
-    float mm_per_ml;
-    float ml_per_mm;
-// functions
-private:
-    int8_t get_addr() { return SYRINGE_ADDR_START + sizeof(Syringe)*index; }
-public:
-    Syringe();
-    void save();
-    void load();
-    void recalc();
+} Syringe;
 
+const Isotope IsotopesEeprom[ISOTOPE_MAX] EEMEM = {
+    {"F-18", 109.7f},
+    {"C-11", 20.4f},
+    {"Ga-68", 67.71f},
+    {"N-13", 9.97f},
+    {"Zr-89", 78.41f*60},
+    {"In-111", 2.8049f*24*60}
+};
+
+const Syringe SyringesEeprom[SYRINGE_MAX] EEMEM = {
+    {"Omni1ml", 1.0f, 14.5f, 71.8f}
+};
+
+enum InjectorMode : uint8_t
+{
+    MODE_VOLUME,
+    MODE_ACTIVITY,
+    MODE_DISTANCE
+};
+
+enum InjectorState : uint8_t
+{
+    STATE_INSERT,
+    STATE_AUTO,
+    STATE_READY,
+    STATE_RUNNING,
+    STATE_TIMER,
+    STATE_EMPTY,
+    STATE_CONFIG_SYRINGE,
+    STATE_CONFIG_VOLUME,
+    STATE_CONFIG_ACTIVITY,
+    STATE_CONFIG_INJECT,
+    STATE_CONFIG_RATE
 };
 
 class Injector
 {
-// consts
-public:
-    static const uint8_t MODE_VOLUME = 0;
-    static const uint8_t MODE_ACTIVITY = 1;
-    static const uint8_t STATE_INSERT = 0;
-    static const uint8_t STATE_AUTO = 1;
-    static const uint8_t STATE_READY = 2;
-    static const uint8_t STATE_CONFIG = 3;
-    static const uint8_t STATE_RUNNING = 4;
-    static const uint8_t STATE_EMPTY = 5;
-
-
 // variables
 private:
     Syringe syringe;
     LinearStage* linearstage;
     Adafruit_GFX* display;
-    uint8_t state;
+    InjectorState state;
     float planned_amount;
-    float planned_time;
-    float start_amount;
-    float start_time;
-    //float activity_hl;      // halflife
-    //uint32_t activity_t0;   // activity start time
-    //float activity_a0;      // activity in bq at start time
+    float planned_rate;
+    //time_t planned_start;
+    Isotope isotope;
+    //uint8_t activity_isotope;
+    time_t activity_t0;     // activity start time
+    float activity_c0;      // concentration in MBq at start time
     //uint32_t activity_t;    // time for last activity calculation
     //float activity_a;       // activity
-    uint8_t mode;
+    InjectorMode mode;
 
 // functions
 private:
+    void print_name();
     void print_volume(float volume);
     void print_activity(float volume);
+    void print_plan();
     void draw_syringe(float volume);
-    //float activity_a();
     
 public:
     Injector(LinearStage* linearstage, Adafruit_GFX* display);
@@ -76,5 +91,15 @@ public:
     void move_max();
     void auto_insert();
     void update_display();
-    void set_activity(float a0, uint32_t t0);
+    float get_volume();
+    float get_activity();
+    void set_isotope(uint8_t index);
+    void set_syringe(uint8_t index);
+    //void set_isotope(char name[8], float halflife);
+    void set_activity(float a0, time_t t0, float volume);
+    void inject_volume(float vol, float rate);
+    void inject_activity(float vol, float rate);
+    void inject_distance(float dist, float rate);
+    void start();
+    void delay_start(uint32_t time);
 };

@@ -20,14 +20,19 @@ void Init()
     internal_time.uint32 = 0;
     trigger_time.uint32 = 0;
 
+    SetupTimer();
+}
+
+// code for arduino uno
+#ifdef ARDUINO_AVR_UNO
+void SetupTimer()
+{
     // Set stepper interrupt
-    cli();//stop interrupts
-    TCCR1A = 0;// set entire TCCR1A register to 0
-    TCCR1B = 0;// same for TCCR1B
-    TCNT1  = 0;//initialize counter value to 0
-    OCR1A = 0xFFFF;// = (16*10^6) / (1*1024) - 1 (must be <65536) // todo set to board freq
-    // turn on CTC mode
-    //TCCR1B |= (1 << WGM12);
+    cli(); //stop interrupts
+    TCCR1A = 0; // set entire TCCR1A register to 0
+    TCCR1B = 0; // same for TCCR1B
+    TCNT1  = 0; //initialize counter value to 0
+    OCR1A = 0xFFFF;//
     // Set CS10 and CS11 bits for 64 prescaler
     TCCR1B |= (1 << CS10) | (1 << CS11);  
     // enable timer overflow interrupt
@@ -77,6 +82,7 @@ ISR(TIMER1_COMPA_vect)
     }
     OCR1A = trigger_time.uint16L;
 }
+#endif
 
 void Prime()
 {

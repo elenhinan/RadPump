@@ -1,19 +1,19 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
+//#include <Wire.h>
+//#include <SPI.h>
 #include <TMC2130Stepper.h>
 #include "EventTimer.h"
 
 #define DEBUG
 
 // config
-#define LENGTH 77.5 // ~78mm length
+#define LENGTH 77.5f // ~78mm length
 #define STALL_VALUE 21 // [-64..63]
 #define MICROSTEPS 8
-#define THREAD_PITCH 2.0 // 2mm/rev
-#define STEP_DEG 1.8 // deg per step
+#define THREAD_PITCH 2.0f // 2mm/rev
+#define STEP_DEG 1.8f // deg per step
 #define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2
 #define SG2_REP 8 // repetitions per SGT value
 #define HOMING_SPEED 5 // mm/s
@@ -31,20 +31,17 @@
 typedef volatile uint8_t PortReg;
 typedef uint8_t PortMask;
 
-static uint8_t LinearStageNumber = 0;
-
 class LinearStage : public TimedEvent
 {
 private:
     // hw stuff
     TMC2130Stepper* stepper;
     bool stallguard_enabled;
-    uint8_t pinEN;
-    uint8_t pinDIR;
-    uint8_t pinSTEP;
-    uint8_t pinCS;
-    uint8_t pinSTALL;
-    uint8_t number;
+    const uint8_t pinEN;
+    const uint8_t pinSTEP;
+    const uint8_t pinCS;
+    const uint8_t pinSTALL;
+    const char name;
     PortReg *stepPort;
     PortMask stepMask;
 
@@ -88,7 +85,7 @@ public:
     static const uint8_t CHOPPER_STALLGUARD = 2;
     static const uint8_t CHOPPER_AUTO = 3;
 
-    LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1);
+    LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1, char name);
     void init();
     void stall_event();
     inline void step() { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; }

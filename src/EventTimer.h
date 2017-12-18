@@ -35,6 +35,7 @@ namespace EventTimer
 
     // functions
     extern void Init();
+    extern void SetupTimer();
     extern void Prime();
     extern uint32_t Now();
     extern void RegisterSource(TimedEvent* source);

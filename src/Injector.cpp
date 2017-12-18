@@ -1,73 +1,57 @@
 #include "Injector.h"
 
-Syringe::Syringe()
-{
-    index = 0;
-    //name = "1ml braun     ";
-    cal_factor = 1.0;
-    volume = 1.0;
-    empty = 14.5;
-    full = 71.8;
-    recalc();
-}
-
-void Syringe::load()
-{
-    int addr = get_addr();
-
-}
-
-void Syringe::save()
-{
-    int addr = get_addr();
-}
-
-void Syringe::recalc()
-{
-    mm_per_ml = (full-empty)/(volume*cal_factor);
-    ml_per_mm = 1. / mm_per_ml;
-}
-
-Injector::Injector(LinearStage* linearstage, Adafruit_GFX* display)
+Injector::Injector(LinearStage* linearstage, Adafruit_GFX* display) :
+    state(STATE_INSERT),
+    planned_amount(0),
+    planned_rate(0.1),
+    //planned_start(0xffffffff),
+    activity_t0(0),
+    activity_c0(0),
+    mode(MODE_DISTANCE)    
 {
     this->linearstage = linearstage;
     this->display = display;
+    set_isotope(0);
+    set_syringe(0);
 
     state = STATE_EMPTY;
-    planned_amount = 0;
-    planned_time = 0;
-    start_amount = 0;
-    start_time = micros();
     mode = MODE_ACTIVITY;
 }
 
-//float Injector::activity_a()
-//{
-//    float n_hl = EventTimer::Now()
-//    return pow(activity_a0,)
-//}
+float Injector::get_volume()
+{
+    float pos = linearstage->get_position_mm();
+    float volume = (pos - syringe.empty) / (syringe.full - syringe.empty) * syringe.volume;
+    return volume;
+}
 
 void Injector::update_display()
 {
     display->setTextSize(1);
     display->setTextColor(1);
 
-    float pos = linearstage->get_position_mm();
-    float vol = (pos - syringe.empty) * syringe.ml_per_mm;
+    float vol = get_volume();
 
     draw_syringe(vol);
     display->setCursor(0,24);
+    print_name();
     print_volume(vol);
+    print_activity(vol);
+    print_plan();
 
-    if(mode == MODE_ACTIVITY)
-    {
+}
 
-    }
+void Injector::print_name()
+{
+    display->print(F("S: \""));
+    display->print(syringe.name);
+    display->println('"');
+
 }
 
 void Injector::print_volume(float volume)
 {
-    display->print(F("V: "));
+    display->print(F("V:"));
     if(volume<-10)
     {
         display->print(volume, 2);    
@@ -82,16 +66,37 @@ void Injector::print_volume(float volume)
         display->print(F(" 0")); // pad
         display->print(volume, 2);    
     }
-    display->print(F(" / "));
-    if(volume<10)display->print('0'); // pad
-    display->print(syringe.volume, 2);
-    display->print(F(" ml"));
+    display->println(F(" ml"));
 }
 
-//void Injector::print_activity(float volume)
-//{
-//
-//}
+void Injector::print_activity(float volume)
+{
+    display->print(F("A: "));
+    display->print(get_activity()*volume, 2);
+    display->print(F(" MBq ("));
+    display->print(isotope.name);
+    display->println(F(")"));
+}
+
+void Injector::print_plan()
+{
+    display->print(F("I: "));
+    display->print(planned_amount, 3);
+    switch(mode)
+    {
+        case MODE_ACTIVITY:display->println(F(" MBq")); break;
+        case MODE_VOLUME: display->println(F(" ml")); break;
+        case MODE_DISTANCE: display->println(F(" mm")); break;
+    }
+    display->print(F("R: "));
+    display->print(planned_rate, 3);
+    switch(mode)
+    {
+        case MODE_ACTIVITY:display->println(F(" ml/s")); break;
+        case MODE_VOLUME: display->println(F(" ml/s")); break;
+        case MODE_DISTANCE: display->println(F(" mm/s")); break;
+    }
+}
 
 void Injector::draw_syringe(float volume)
 {
@@ -123,4 +128,81 @@ void Injector::draw_syringe(float volume)
     display->drawRect(pusher_x, center_y-pusher_h2/2, 2, pusher_h2, 1); // pusher plate
     display->drawRect(pusher_x, center_y-pusher_h/2, pusher_w, pusher_h, 1); // pusher rod
     display->drawRect(pusher_x+pusher_w-1, center_y-cyl_h/2, 2, cyl_h, 1); // pusher plate back    
+}
+void Injector::set_isotope(uint8_t index)
+{
+    eeprom_read_block(&isotope, &IsotopesEeprom[index], sizeof(Isotope)); // read from eeprom
+    #ifdef DEBUG
+    Serial.print(F("Isotope #"));
+    Serial.println(index);
+    Serial.print(F("  "));
+    Serial.println(isotope.name);
+    Serial.print(F("  "));
+    Serial.println(isotope.halflife);
+    #endif
+}
+
+// void Injector::set_isotope(char name[8], float halflife)
+// {
+//     uint8_t i=0;
+//     while(name[i] != 0x00)
+//         isotope.name[i] = name[i++]; // copy contents of name
+//     while(i<sizeof(isotope.name))
+//         isotope.name[i++] = 0x00; // zero pad rest
+//     isotope.halflife = halflife;
+// }
+
+void Injector::set_syringe(uint8_t index)
+{
+    eeprom_read_block(&syringe, &SyringesEeprom[index], sizeof(Syringe)); // read from eeprom
+    #ifdef DEBUG
+    Serial.print(F("Syringe #"));
+    Serial.println(index);
+    Serial.print(F("  "));
+    Serial.println(syringe.name);
+    Serial.print(F("  empty: "));
+    Serial.println(syringe.empty);
+    Serial.print(F("  full: "));
+    Serial.println(syringe.full);
+    Serial.print(F("  vol: "));
+    Serial.println(syringe.volume);
+    #endif
+}
+
+float Injector::get_activity()
+{
+    float t = (now() - activity_t0) * 1.0f/60.0f;
+    float hl = isotope.halflife;
+    float At = activity_c0 * pow(0.5f, t/hl);
+    return At;
+}
+
+void Injector::set_activity(float a0, time_t t0, float volume)
+{
+    activity_c0 = a0 / volume;
+    activity_t0 = t0;
+}
+
+void Injector::inject_volume(float vol, float rate)
+{
+    planned_amount = vol;
+    planned_rate = rate;
+    mode = MODE_VOLUME;
+}
+
+void Injector::inject_activity(float activity, float rate)
+{
+    planned_amount = activity;
+    planned_rate = rate;
+    mode = MODE_ACTIVITY;
+}
+
+void Injector::start()
+{
+    state = STATE_RUNNING;
+}
+
+void Injector::delay_start(uint32_t time)
+{
+    state = STATE_TIMER;
 }
