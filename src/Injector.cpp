@@ -18,13 +18,6 @@ Injector::Injector(LinearStage* linearstage, Adafruit_GFX* display) :
     mode = MODE_ACTIVITY;
 }
 
-float Injector::get_volume()
-{
-    float pos = linearstage->get_position_mm();
-    float volume = (pos - syringe.empty) / (syringe.full - syringe.empty) * syringe.volume;
-    return volume;
-}
-
 void Injector::update_display()
 {
     display->setTextSize(1);
@@ -167,6 +160,13 @@ void Injector::set_syringe(uint8_t index)
     Serial.print(F("  vol: "));
     Serial.println(syringe.volume);
     #endif
+}
+
+float Injector::get_volume()
+{
+    float pos = linearstage->get_position_mm();
+    float volume = (pos - syringe.empty) / (syringe.full - syringe.empty) * syringe.volume;
+    return volume;
 }
 
 float Injector::get_activity()
