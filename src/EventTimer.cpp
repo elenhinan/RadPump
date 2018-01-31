@@ -8,11 +8,12 @@ namespace EventTimer
     TimedEvent* source_ptr;
     TimedEvent* source_list[8];
 
+
 void Init()
 {
     internal_time.uint32 = 0;
     #ifdef DEBUG
-    Serial.println(F("Eventtimer init()"));
+    SERIAL_DEBUG.println(F("Eventtimer init()"));
     #endif
 
     source_count = 0;
@@ -23,37 +24,56 @@ void Init()
     SetupTimer();
 }
 
-// code for arduino uno
-#ifdef ARDUINO_AVR_UNO
+inline void CompareEnable()
+{
+    timer_enable_irq(TIMER_N, TIMER_CC2_INTERRUPT);
+};
+
+inline void CompareDisable()
+{
+    timer_disable_irq(TIMER_N, TIMER_CC2_INTERRUPT);
+};
+
 void SetupTimer()
 {
-    // Set stepper interrupt
-    cli(); //stop interrupts
-    TCCR1A = 0; // set entire TCCR1A register to 0
-    TCCR1B = 0; // same for TCCR1B
-    TCNT1  = 0; //initialize counter value to 0
-    OCR1A = 0xFFFF;//
-    // Set CS10 and CS11 bits for 64 prescaler
-    TCCR1B |= (1 << CS10) | (1 << CS11);  
-    // enable timer overflow interrupt
-    TIMSK1 |= (1 << TOIE1);
-    // enable timer compare interrupt
-    //TIMSK1 |= (1 << OCIE1A);
-    sei();//allow interrupts
+    // initialize timer used for EventTimer
+    timer_init(TIMER_N);
+    timer_pause(TIMER_N);
+    timer_set_prescaler(TIMER_N, PRESCALE-1);
+
+    // setup channel for overflow counting
+    timer_set_compare(TIMER_N, TIMER_CH1, 0x0000);
+    timer_set_mode(TIMER_N, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+    timer_oc_set_mode(TIMER_N, TIMER_CH1, TIMER_OC_MODE_FROZEN, 0);
+    timer_attach_interrupt(TIMER_N, TIMER_CC1_INTERRUPT, &TimerOverflow);
+    timer_enable_irq(TIMER_N, TIMER_CC1_INTERRUPT);
+
+    // setup channel for timing compare
+    timer_set_compare(TIMER_N, TIMER_CH2, 0x0000);
+    timer_set_mode(TIMER_N, TIMER_CH2, TIMER_OUTPUT_COMPARE);
+    timer_oc_set_mode(TIMER_N, TIMER_CH2, TIMER_OC_MODE_FROZEN, 0);
+    timer_attach_interrupt(TIMER_N, TIMER_CC2_INTERRUPT, &TimerCompare);
+    timer_enable_irq(TIMER_N, TIMER_CC2_INTERRUPT);
+
+    CompareDisable();
+
+    // start timer
+    timer_generate_update(TIMER_N);
+    timer_resume(TIMER_N);
 }
 
-ISR(TIMER1_OVF_vect)
+void TimerOverflow()
 {
     internal_time.uint16H++;
     if(trigger_time.uint16H == internal_time.uint16H && source_ptr != NULL) // if trigger time high-word is 0, active more fine grained interrupt
     {
-        TIMSK1 |= (1 << OCIE1A);
+        CompareEnable();
     }
 }
 
 // todo: will it trigger if trigger_time.uint16h == 0?
 
-ISR(TIMER1_COMPA_vect)
+void TimerCompare()
 {
     source_ptr->event_execute(); // trigger event
 
@@ -78,11 +98,10 @@ ISR(TIMER1_COMPA_vect)
     }
     if (trigger_time.uint16H > internal_time.uint16H || source_ptr == NULL) // if trigger due after more than 65535 ticks or source_ptr == NULL
     {
-        TIMSK1 &= ~(1 << OCIE1A); // disable compare interrupt
+        CompareDisable();
     }
-    OCR1A = trigger_time.uint16L;
+    timer_set_compare(TIMER_N, TIMER_CH2, trigger_time.uint16L);
 }
-#endif
 
 void Prime()
 {
@@ -102,27 +121,27 @@ void Prime()
                 }
             }
         }
-        OCR1A = trigger_time.uint16L;
+        timer_set_compare(TIMER_N, TIMER_CH2, trigger_time.uint16L);
 
         if(trigger_time.uint16H == internal_time.uint16H && source_ptr != NULL) // if trigger time high-word is 0, active more fine grained interrupt
         {
-            TIMSK1 |= (1 << OCIE1A);
+            CompareEnable();
         }
         else
         {
-            TIMSK1 &= ~(1 << OCIE1A);
+            CompareDisable();
         }
 
         #ifdef DEBUG
-        Serial.println(F("EventTimer primed"));
-        Serial.print("  32:  ");
-        Serial.println(trigger_time.uint32,HEX);
-        Serial.print("  16H: ");
-        Serial.println(trigger_time.uint16H,HEX);
-        Serial.print("  16L: ");
-        Serial.println(trigger_time.uint16L,HEX);
-        Serial.print("  int: ");
-        Serial.println(Now(),HEX);
+        SERIAL_DEBUG.println(F("EventTimer primed"));
+        SERIAL_DEBUG.print("  32:  ");
+        SERIAL_DEBUG.println(trigger_time.uint32,HEX);
+        SERIAL_DEBUG.print("  16H: ");
+        SERIAL_DEBUG.println(trigger_time.uint16H,HEX);
+        SERIAL_DEBUG.print("  16L: ");
+        SERIAL_DEBUG.println(trigger_time.uint16L,HEX);
+        SERIAL_DEBUG.print("  int: ");
+        SERIAL_DEBUG.println(Now(),HEX);
         #endif
     }
 }
@@ -131,9 +150,9 @@ void Prime()
 
 uint32_t Now()
 {
-    cli();
-    uint32_t value = internal_time.uint32+(uint32_t)TCNT1;
-    sei();
+    noInterrupts();
+    uint32_t value = internal_time.uint32 + (uint32_t)timer_get_count(TIMER_N);
+    interrupts();
     return value;
 }
 
@@ -141,9 +160,9 @@ void RegisterSource(TimedEvent* source)
 {
     source_list[source_count++] = source;
     #ifdef DEBUG
-    Serial.print(F("EventTimer added source (0x"));
-    Serial.print((uint16_t)source,HEX);
-    Serial.print(F(")"));
+    SERIAL_DEBUG.print(F("EventTimer added source (0x"));
+    //SERIAL_DEBUG.print((uint16_t)((void *)source),HEX);
+    SERIAL_DEBUG.print(F(")"));
     #endif
 }
 

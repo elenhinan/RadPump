@@ -5,19 +5,11 @@
 //#include <SPI.h>
 #include <TMC2130Stepper.h>
 #include "EventTimer.h"
+#include "Config.h"
 
-#define DEBUG
+//#define DEBUG
 
 // config
-#define LENGTH 77.5f // ~78mm length
-#define STALL_VALUE 21 // [-64..63]
-#define MICROSTEPS 8
-#define THREAD_PITCH 2.0f // 2mm/rev
-#define STEP_DEG 1.8f // deg per step
-#define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2
-#define SG2_REP 8 // repetitions per SGT value
-#define HOMING_SPEED 5 // mm/s
-#define MIN_SD_SPEED 1 // mm/s
 #define TMC2130_FLCK 12000000 // TMC2130 internal fclk
 
 // macros
@@ -28,22 +20,28 @@
 #define STEPMM MM2STEP(1)
 #define SG2_TUNE_TSTEP (60ul * 1000ul * 1000ul * STEP_DEG / (SG2_TUNE_RPM * MICROSTEPS * 360ul))
 
-typedef volatile uint8_t PortReg;
-typedef uint8_t PortMask;
+#ifdef ARDUINO_ARCH_AVR
+    #define REGTYPE uint8_t
+#else
+    #define REGTYPE uint32_t
+#endif
+
+typedef volatile REGTYPE PortReg;
+typedef REGTYPE PortMask;
 
 class LinearStage : public TimedEvent
 {
 private:
     // hw stuff
-    TMC2130Stepper* stepper;
+    TMC2130Stepper stepper;
     bool stallguard_enabled;
     const uint8_t pinEN;
     const uint8_t pinSTEP;
     const uint8_t pinCS;
     const uint8_t pinSTALL;
     const char name;
-    PortReg *stepPort;
-    PortMask stepMask;
+    gpio_dev* stepPort;
+    uint16_t stepMask;
 
     // driver settings
     int8_t stepper_sgt;
@@ -87,16 +85,19 @@ public:
 
     LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1, char name);
     void init();
-    void stall_event();
-    inline void step() { *stepPort |=  stepMask; *stepPort &= ~stepMask; position += direction; }
-    inline void dir(int8_t direction) { this->direction = direction; stepper->shaft_dir(direction == DIR_POS); }
-    inline uint16_t get_sg() { return stepper->sg_result(); }
+    static void stall_event(void* linearstage_ptr);
+ 
+    void step();
+    void dir(int8_t direction) { this->direction = direction; stepper.shaft_dir(direction == DIR_POS); }
+    inline uint16_t get_sg() { return stepper.sg_result(); }
     void stallguard(bool enable);
     void stealthchop(bool enable);
     void home(int8_t home_dir);
     void calibrate();
     bool search();
     void stop();
+    void enable() { digitalWrite(pinEN, LOW); }
+    void disable() { digitalWrite(pinEN, HIGH); }
     int32_t get_home() { return 0; }
     int32_t get_endstop_steps() { return endstop; }
     int32_t get_position_steps() { return position; }

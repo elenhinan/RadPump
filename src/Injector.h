@@ -1,13 +1,9 @@
 #pragma once
 #include <Arduino.h>
-#include <Adafruit_GFX.h>
-//#include <EEPROM.h>
+#include <Adafruit_GFX_AS.h>
 #include <TimeLib.h>
 #include "LinearStage.h"
-
-// max isotopes and syringes stored in eeprom
-#define ISOTOPE_MAX 16
-#define SYRINGE_MAX 16
+#include "Config.h"
 
 typedef struct
 {
@@ -17,13 +13,13 @@ typedef struct
 
 typedef struct
 {
-    char name[8];      // short name
+    char name[16];      // short name
     float volume;       // syringe volume
     float empty;        // mm from home when empty
     float full;         // mm from home when full
 } Syringe;
 
-const Isotope IsotopesEeprom[ISOTOPE_MAX] EEMEM = {
+const Isotope IsotopesEeprom[ISOTOPE_MAX] PROGMEM = {
     {"F-18", 109.7f},
     {"C-11", 20.4f},
     {"Ga-68", 67.71f},
@@ -32,8 +28,8 @@ const Isotope IsotopesEeprom[ISOTOPE_MAX] EEMEM = {
     {"In-111", 2.8049f*24*60}
 };
 
-const Syringe SyringesEeprom[SYRINGE_MAX] EEMEM = {
-    {"Omni1ml", 1.0f, 14.5f, 71.8f}
+const Syringe SyringesEeprom[SYRINGE_MAX] PROGMEM = {
+    {"Omnifix 1ml", 1.0f, 14.5f, 71.8f}
 };
 
 enum InjectorMode : uint8_t
@@ -68,6 +64,7 @@ private:
     InjectorState state;
     float planned_amount;
     float planned_rate;
+    float prev_vol;
     //time_t planned_start;
     Isotope isotope;
     //uint8_t activity_isotope;
@@ -83,7 +80,7 @@ private:
     void print_volume(float volume);
     void print_activity(float volume);
     void print_plan();
-    void draw_syringe(float volume);
+    void draw_syringe(float volume, bool redraw);
     
 public:
     Injector(LinearStage* linearstage, Adafruit_GFX* display);

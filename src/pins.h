@@ -1,47 +1,26 @@
 
 #pragma once
-#ifdef ARDUINO_AVR_UNO
-//define SCK         13
-//define MISO        12
-//define MOSI        11
-#define OLED_RST    7
-#define OLED_DC     10
-#define OLEDA_CS    9
-#define OLEDB_CS    8
-#define STEP_EN     7
-#define STEPA_STEP  5
-#define STEPA_CS    4
-#define STEPA_STALL 3
-#define STEPB_STEP  6
-#define STEPB_CS    A3
-#define STEPB_STALL 2
-#define JSTK_X      A0
-#define JSTK_Y      A1
-#define JSTK_SW     A2
-#endif
+#ifdef ARDUINO_GENERIC_STM32F103C
+//      SCK         PA5
+//      MISO        PA6
+//      MOSI        PA7
+//      RX          PB7
+//      TX          PB6
 
-// arduino samd21
-#ifdef ARDUINO_SAMD_ZERO
-//define SCK         ICSP-3
-//define MISO        ICSP-1
-//define MOSI        ICSP-4
-//define SCA         D21
-//define SDA         D20
-#define OLED_RST    13
-#define OLED_DC     12
-#define OLEDA_CS    11
-#define OLEDB_CS    10
-#define STEP_EN     9
-#define STEPA_STEP  8
-#define STEPA_CS    7
-#define STEPA_STALL 6
-#define STEPB_STEP  5
-#define STEPB_CS    4
-#define STEPB_STALL 3
-//#define STEPC_STEP  2
-//#define STEPC_CS    1
-//#define STEPC_STALL 0
-#define JSTK_X      A0
-#define JSTK_Y      A1
-#define JSTK_SW     A2
+#define DISP_RST    PA3
+#define DISP_DC     PA2
+#define DISP_CS     PA1
+#define DISP_BL     PA0
+
+#define STEPA_EN    PB8
+#define STEPA_STEP  PA8
+#define STEPA_CS    PA9
+#define STEPA_STALL PA10
+#define STEPB_EN    PB9
+#define STEPB_STEP  PB3
+#define STEPB_CS    PB4
+#define STEPB_STALL PB5
+#define JSTK_X      PB1
+#define JSTK_Y      PB0
+#define JSTK_SW     PB10
 #endif

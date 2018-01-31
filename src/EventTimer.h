@@ -1,9 +1,10 @@
 #pragma once
-
 #include <Arduino.h>
+#include "Config.h"
 
-#define DELTA_T 64./float(F_CPU)
-//#define DEBUG
+#define TIMER_N TIMER1
+#define PRESCALE 72
+#define DELTA_T (float(PRESCALE)/float(F_CPU))
 
 union uint32_split_t
 {
@@ -39,4 +40,6 @@ namespace EventTimer
     extern void Prime();
     extern uint32_t Now();
     extern void RegisterSource(TimedEvent* source);
+    extern void TimerOverflow();
+    extern void TimerCompare();
 };

@@ -1,6 +1,11 @@
+#define DEBUG
+
+// serial config
+#define SERIAL_DEBUG Serial3
+
 // stepper configuration
 #define STEPPERCURRENT 200
-#define STALL_VALUE 21 // [-64..63]
+#define STALL_VALUE 16 // [-64..63] default: 21
 #define MICROSTEPS 8
 
 // linear stage 
@@ -10,7 +15,7 @@
 #define SG2_TUNE_RPM 5 // RPM for autotuning stallguard2
 #define SG2_REP 8 // repetitions per SGT value
 #define HOMING_SPEED 5.0 // mm/s
-#define HOMING_ACCEL 100.0 // mm/s²
+#define HOMING_ACCEL 20.0 // mm/s²
 #define MIN_SD_SPEED 1 // mm/s
 
 // max isotopes and syringes stored in eeprom
