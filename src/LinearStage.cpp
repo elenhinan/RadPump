@@ -1,6 +1,6 @@
 #include "LinearStage.h"
 
-#define VERIFY2(FUNCTION, VALUE) stepper.FUNCTION(VALUE); SERIAL_DEBUG.print( #FUNCTION "(" #VALUE ") "); SERIAL_DEBUG.println(stepper.FUNCTION());
+#define VERIFY2(FUNCTION, VALUE) stepper.FUNCTION(VALUE);// SERIAL_DEBUG.print( #FUNCTION "(" #VALUE ") "); SERIAL_DEBUG.println(stepper.FUNCTION());
 #define VERIFY(FUNCTION, VALUE) VERIFY2(FUNCTION, VALUE)
 
 LinearStage::LinearStage(uint8_t pinEN, uint8_t pinSTEP, uint8_t pinCS, uint8_t pinDIAG1, char name) :
@@ -71,10 +71,9 @@ void LinearStage::setup_driver()
     stepper_sgt = STALL_VALUE;
     //stepper.begin();
     // configure stepper driver
+    //bool setup_ok = true;
     VERIFY(rms_current, STEPPERCURRENT); // mA
     VERIFY(microsteps , MICROSTEPS);
-    //while(stepper.interpolate() != 1)
-        //stepper.interpolate(1);
     VERIFY(interpolate, 1)
     VERIFY(external_ref, 0);
     VERIFY(internal_sense_R, 0);
@@ -140,7 +139,7 @@ void LinearStage::home(int8_t home_dir)
     stallguard(true);
     if(home_dir == DIR_BOTH || home_dir == DIR_POS)
     {
-        move(LENGTH*1.10*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, false, 0); // move up to 110% of defined length
+        move(LENGTH*1.10*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, false, 1); // move up to 110% of defined length
         wait_move(); // wait for stall (or end of move)
 
         if(state == MOVE_STALLED || state == MOVE_STOP)
@@ -154,7 +153,7 @@ void LinearStage::home(int8_t home_dir)
     }
     if(home_dir == DIR_BOTH || home_dir == DIR_NEG)
     {
-        move(-LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false, 0); // move up to 110% of defined length
+        move(-LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false, 1); // move up to 110% of defined length
         wait_move(); // wait until move done (because of a stall)
 
         if(state == MOVE_STALLED || state == MOVE_STOP)
@@ -301,7 +300,7 @@ bool LinearStage::search()
     // SERIAL_DEBUG.println(sg_val_thr,DEC);
     // delay(2000);
     // #endif
-    move_abs(20, 1.0, 5.0, 0); // move up to 20mm
+    move(20*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, true, 1); // move up to 20mm
 	//stepper.rms_current(100); // mA
 
     while(state != MOVE_STOP && state != MOVE_STALLED)
@@ -321,21 +320,21 @@ bool LinearStage::search()
     return true;
 }
 
-void LinearStage::move_rel(float x, float dx, float ddx, uint32_t start_time)
+void LinearStage::move_rel(float x, float dx, float ddx, uint64_t start_time)
 {
     stallguard(false);
     stealthchop(true);
     move(x*STEPMM + position, dx*STEPMM, ddx*STEPMM, true, start_time);
 }
 
-void LinearStage::move_abs(float x, float dx, float ddx, uint32_t start_time)
+void LinearStage::move_abs(float x, float dx, float ddx, uint64_t start_time)
 {
     stallguard(false);
     stealthchop(true);
     move(x*STEPMM, dx*STEPMM, ddx*STEPMM, true, start_time);
 }
 
-void LinearStage::move(float x, float dx, float ddx, bool limit, uint32_t start_time)
+void LinearStage::move(float x, float dx, float ddx, bool limit, uint64_t start_time)
 {
     planner_init(x, dx, ddx, limit, start_time);
     event_ready = planner_advance();
@@ -350,7 +349,7 @@ void LinearStage::event_execute()
     event_time = planner_next_time;
 }
 
-void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_t start_time)
+void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time)
 {
     planner_speed = dx*EventTimer::dt;
     planner_accel = ddx*EventTimer::dt*EventTimer::dt;
@@ -408,10 +407,10 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
     }
 
     // use steps for each block to determine timing for each block
-    planner_t0 = EventTimer::Now() + uint32_t((float)start_time*EventTimer::dt);
-    planner_t1 = (uint32_t)(planner_t0 + sqrt(float(planner_d1)*planner_accel_inv)+0.5);
-    planner_t2 = (uint32_t)(planner_t1 + float(planner_d2-planner_d1+1)*planner_speed_inv+0.5);
-    planner_t3 = (uint32_t)(planner_t2 + sqrt(float(planner_d3-planner_d2-1)*planner_accel_inv)+0.5);
+    planner_t0 = EventTimer::Now() + uint64_t((float)start_time*1000000000.*EventTimer::dt);
+    planner_t1 = (uint64_t)(planner_t0 + sqrt(float(planner_d1)*planner_accel_inv)+0.5);
+    planner_t2 = (uint64_t)(planner_t1 + float(planner_d2-planner_d1+1)*planner_speed_inv+0.5);
+    planner_t3 = (uint64_t)(planner_t2 + sqrt(float(planner_d3-planner_d2-1)*planner_accel_inv)+0.5);
     
     // calculations for time to next step
     //         t0 = now
@@ -432,9 +431,9 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint32_
 bool LinearStage::planner_advance() {
     switch(state) // remove state and change to if's
     {
-        case MOVE_ACCEL:    planner_next_time = planner_t0 + (uint32_t)(sqrt(float(planner_step)*planner_accel_inv)); break;
-        case MOVE_SLEW:     planner_next_time = planner_t1 + (uint32_t)((float)(planner_step-planner_d1)*planner_speed_inv); break;
-        case MOVE_DECEL:    planner_next_time = planner_t3 - (uint32_t)(sqrt((float)(planner_d3-planner_step)*planner_accel_inv)); break;
+        case MOVE_ACCEL:    planner_next_time = planner_t0 + (uint64_t)(sqrt(float(planner_step)*planner_accel_inv)); break;
+        case MOVE_SLEW:     planner_next_time = planner_t1 + (uint64_t)((float)(planner_step-planner_d1)*planner_speed_inv); break;
+        case MOVE_DECEL:    planner_next_time = planner_t3 - (uint64_t)(sqrt((float)(planner_d3-planner_step)*planner_accel_inv)); break;
         case MOVE_STOP:     return false;
         case MOVE_STALLED:  return false;
     }
@@ -451,7 +450,7 @@ void LinearStage::stop()
 {
     state = MOVE_STOP;
     event_ready = false;
-    event_time = 0xFFFFFFFF;
+    event_time = 0xFFFFFFFFFFFFFFFF;
 }
 
 void LinearStage::wait_move()

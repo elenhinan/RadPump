@@ -84,6 +84,7 @@ private:
     
 public:
     Injector(LinearStage* linearstage, Adafruit_GFX* display);
+    void init();
     void move_insertion();
     void move_max();
     void auto_insert();

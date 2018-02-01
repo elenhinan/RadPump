@@ -7,8 +7,6 @@
 #include "EventTimer.h"
 #include "Config.h"
 
-//#define DEBUG
-
 // config
 #define TMC2130_FLCK 12000000 // TMC2130 internal fclk
 
@@ -54,20 +52,20 @@ private:
 
     // movement planner
     int32_t planner_target;
-    uint32_t planner_step;
-    uint32_t planner_next_time;
+    uint64_t planner_step;
+    uint64_t planner_next_time;
     float planner_speed;
     float planner_accel;
     float planner_speed_inv;
     float planner_accel_inv;
-    uint32_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
-    uint32_t planner_t0, planner_t1, planner_t2, planner_t3; // as above, but time expressed in units of ts
-    void planner_init(float x, float dx, float ddx, bool limit, uint32_t start_time);
+    uint64_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
+    uint64_t planner_t0, planner_t1, planner_t2, planner_t3; // as above, but time expressed in units of ts
+    void planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time);
     bool planner_advance();
 
     // other functions
     void setup_driver();
-    void move(float x, float dx, float ddx, bool limit, uint32_t start_time);
+    void move(float x, float dx, float ddx, bool limit, uint64_t start_time);
 
 public:
     static const int8_t DIR_POS = 1;
@@ -104,9 +102,8 @@ public:
     float get_endstop_mm() { return float(endstop)*(1./float(STEPMM)); }
     float get_position_mm() { return float(position)*(1./float(STEPMM)); }
     
-    void move_abs(float x, float dx, float ddx, uint32_t start_time);
-    void move_rel(float x, float dx, float ddx, uint32_t start_time);
+    void move_abs(float x, float dx, float ddx, uint64_t start_time);
+    void move_rel(float x, float dx, float ddx, uint64_t start_time);
     void wait_move();
-    bool calc_next_move(uint32_t &time, uint8_t &port);
     void event_execute();
 };

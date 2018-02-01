@@ -18,7 +18,7 @@ union uint32_split_t
 class TimedEvent
 {
 public:
-    uint32_t event_time;
+    uint64_t event_time;
     bool event_ready;
     virtual void event_execute() = 0;
 };
@@ -27,10 +27,10 @@ public:
 namespace EventTimer
 {
     // variables
-    extern uint32_split_t internal_time;
+    extern uint64_t internal_time;
     extern uint8_t source_count;
     static const float dt = DELTA_T;
-    extern uint32_split_t trigger_time;
+    extern uint64_t trigger_time;
     extern TimedEvent* source_ptr;
     extern TimedEvent* source_list[8];
 
@@ -38,7 +38,7 @@ namespace EventTimer
     extern void Init();
     extern void SetupTimer();
     extern void Prime();
-    extern uint32_t Now();
+    extern uint64_t Now();
     extern void RegisterSource(TimedEvent* source);
     extern void TimerOverflow();
     extern void TimerCompare();

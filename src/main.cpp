@@ -1,22 +1,22 @@
 #include <Arduino.h>
-//#include <Adafruit_GFX_AS.h>    // Core graphics library
-//#include <Adafruit_ST7735.h>
+#include <Adafruit_GFX_AS.h>    // Core graphics library
+#include <Adafruit_ST7735.h>
 //#include <TimeLib.h>
 //#include <DS1307RTC.h>
 #include "Config.h"
 #include "pins.h"
 #include "LinearStage.h"
 #include "EventTimer.h"
-//#include "Injector.h"
+#include "Injector.h"
 
 #define BAUDRATE 115200
 
 LinearStage linearstageA(STEPA_EN, STEPA_STEP, STEPA_CS, STEPA_STALL, 'A');
 //LinearStage linearstageB(STEPB_EN, STEPB_STEP, STEPB_CS, STEPB_STALL, 'B');
 
-//Adafruit_ST7735 display(DISP_CS, DISP_DC, DISP_RST);
+Adafruit_ST7735 display(DISP_CS, DISP_DC, DISP_RST);
 
-//Injector injectorA(&linearstageA, &display);
+Injector injectorA(&linearstageA, &display);
 
 void setup() {
 
@@ -24,7 +24,8 @@ void setup() {
 
     // turn on backlight
     pinMode(DISP_BL, OUTPUT);
-    digitalWrite(DISP_BL, HIGH);
+    //digitalWrite(DISP_BL, HIGH);
+    analogWrite(DISP_BL, 0x64);
 
     // setup Serial
     SERIAL_DEBUG.begin(BAUDRATE);
@@ -50,8 +51,8 @@ void setup() {
 
     
     // setup display
-    //display.initR(INITR_BLACKTAB);
-    //display.fillScreen(ST7735_BLACK);
+    display.initR(INITR_BLACKTAB);
+    display.fillScreen(ST7735_BLACK);
     delay(1000);
 
     // joystick setup
@@ -74,21 +75,23 @@ void setup() {
     //linearstageA.calibrate();
 
     //delay(2000);
-    //injectorA.set_isotope(3);
-    //injectorA.set_activity(10.0f, now(), 0.6);
+    injectorA.init();
+    injectorA.set_isotope(3);
+    injectorA.set_activity(10.0f, now(), 0.6);
 
     linearstageA.home(LinearStage::DIR_NEG);
-    linearstageA.move_abs(50, 6., 4.0, 100);
+    linearstageA.move_abs(50, 6., 4.0, 1);
     linearstageA.wait_move();
-    linearstageA.search();
-    //linearstageA.move_abs(20, 2., 4.0, 100);
+    //linearstageA.search();
+    linearstageA.move_abs(20, 2., 4.0, 1);
     //delay(5000);
     //linearstageA.search();
 }
 
 void loop() {
     //display.fillScreen(ST7735_BLACK);
-    //injectorA.update_display();
+    injectorA.update_display();
+    delay(10);
     //static int count = 0;
     //digitalWrite(LED_BUILTIN, HIGH);
     //delay(50);

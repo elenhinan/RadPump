@@ -16,6 +16,8 @@
 #define SG2_REP 8 // repetitions per SGT value
 #define HOMING_SPEED 5.0 // mm/s
 #define HOMING_ACCEL 20.0 // mm/s²
+#define SEARCH_SPEED 5.0 // mm/s
+#define SEARCH_ACCEL 20.0 // mm/s²
 #define MIN_SD_SPEED 1 // mm/s
 
 // max isotopes and syringes stored in eeprom

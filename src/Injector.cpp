@@ -12,11 +12,15 @@ Injector::Injector(LinearStage* linearstage, Adafruit_GFX* display) :
 {
     this->linearstage = linearstage;
     this->display = display;
-    set_isotope(0);
-    set_syringe(0);
 
     state = STATE_EMPTY;
     mode = MODE_ACTIVITY;
+}
+
+void Injector::init()
+{
+    set_isotope(0);
+    set_syringe(0);
 }
 
 void Injector::update_display()
