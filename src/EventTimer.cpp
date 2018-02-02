@@ -3,12 +3,12 @@
 
 #define ET_LOWMASK uint64_t(0xFFFF)
 #define ET_HIGHMASK ~ET_LOWMASK
-#define ET_MAX 0xFFFFFFFFFFFFFFFF
 
 namespace EventTimer
 {
-    uint64_t internal_time;
-    uint64_t trigger_time;
+    uint32_t internal_time;
+    uint32_t trigger_time_H;
+    uint16_t trigger_time_L;
     uint8_t source_count;
     TimedEvent* source_ptr;
     TimedEvent* source_list[8];
@@ -24,7 +24,8 @@ void Init()
     source_count = 0;
     source_ptr = NULL;
     internal_time = 0;
-    trigger_time = 0;
+    trigger_time_H = UINT32_MAX;
+    trigger_time_L = UINT16_MAX;
 
     SetupTimer();
 }
@@ -52,11 +53,11 @@ void SetupTimer()
     timer_enable_irq(TIMER_N, TIMER_UPDATE_INTERRUPT);
 
     // setup channel for timing compare
-    timer_set_compare(TIMER_N, TIMER_CH1, 0x0000);
+    timer_set_compare(TIMER_N, TIMER_CH1, 0x8000);
     timer_set_mode(TIMER_N, TIMER_CH1, TIMER_OUTPUT_COMPARE);
     timer_oc_set_mode(TIMER_N, TIMER_CH1, TIMER_OC_MODE_FROZEN, 0);
     timer_attach_interrupt(TIMER_N, TIMER_CC1_INTERRUPT, &TimerCompare);
-    CompareDisable();
+    CompareEnable();
 
 #if TIMER_N == TIMER1
     // set timer1 interrupt priority to highest priority
@@ -71,31 +72,26 @@ void SetupTimer()
 
 void TimerOverflow()
 {
-    internal_time += 1<<16;
-    if((trigger_time & ET_HIGHMASK) == (internal_time & ET_HIGHMASK) && source_ptr != NULL) // if trigger time high-word is 0, active more fine grained interrupt
-    {
-        CompareEnable();
-    }
+    internal_time++;
 }
-
-// todo: will it trigger if trigger_time.uint16h == 0?
 
 void TimerCompare()
 {
+    if(source_ptr == NULL || (trigger_time_H > internal_time))
+        return;
     source_ptr->event_execute(); // trigger event
+    Prime();
+}
 
-    // if events are skipped because trigger_time.uint16h == 0 && trigger_time.uint16l == tcnt1
-    // add do{} while(trigger_time = Now())
-    // should not be needed as "OCR1A/B is compared with TCNT1 value at all time"
-
-    // find time of next event
-    trigger_time = ET_MAX;
+inline void Prime()
+{
+    uint64_t trigger_time = UINT64_MAX;
     source_ptr = NULL;
-
     for(int i=0;i<source_count;i++)
     {
         if(source_list[i]->event_ready)
         {
+
             if(source_list[i]->event_time < trigger_time)
             {
                 trigger_time = source_list[i]->event_time;
@@ -103,50 +99,18 @@ void TimerCompare()
             }
         }
     }
-    if ((trigger_time & ET_HIGHMASK) > (internal_time & ET_HIGHMASK) || source_ptr == NULL) // if trigger due after more than 65535 ticks or source_ptr == NULL
-    {
-        CompareDisable();
-    }
-    timer_set_compare(TIMER_N, TIMER_CH1, trigger_time & ET_LOWMASK);
-}
+    trigger_time_H = (trigger_time >> 16) & UINT32_MAX;
+    trigger_time_L = trigger_time & UINT16_MAX;
+    timer_set_compare(TIMER_N, TIMER_CH1, trigger_time_L);
 
-void Prime()
-{
-    if(source_ptr == NULL) // only find next event if none in queue
-    {
-        trigger_time = ET_MAX;
-
-        for(int i=0;i<source_count;i++)
-        {
-            if(source_list[i]->event_ready)
-            {
-
-                if(source_list[i]->event_time < trigger_time)
-                {
-                    trigger_time = source_list[i]->event_time;
-                    source_ptr = source_list[i];
-                }
-            }
-        }
-        timer_set_compare(TIMER_N, TIMER_CH1, trigger_time & ET_LOWMASK);
-
-        if((trigger_time & ET_HIGHMASK) == (internal_time & ET_HIGHMASK) && source_ptr != NULL) // if trigger time high-word is 0, active more fine grained interrupt
-        {
-            CompareEnable();
-        }
-        else
-        {
-            CompareDisable();
-        }
-
-        #ifdef DEBUG
-        SERIAL_DEBUG.println(F("EventTimer primed"));
-        SERIAL_DEBUG.print("  start:  ");
-        SERIAL_DEBUG.println(trigger_time,HEX);
-        SERIAL_DEBUG.print("  now(): ");
-        SERIAL_DEBUG.println(Now(),HEX);
-        #endif
-    }
+    // #ifdef DEBUG
+    // uint64_t time_now = Now();
+    // SERIAL_DEBUG.println(F("EventTimer primed"));
+    // SERIAL_DEBUG.print("  start: ");
+    // SERIAL_DEBUG.println(trigger_time,HEX);
+    // SERIAL_DEBUG.print("  now(): ");
+    // SERIAL_DEBUG.println(time_now,HEX);
+    // #endif
 }
 
 // todo: kanskje bruke tcnt1 overflow for internal_time.uint16H++

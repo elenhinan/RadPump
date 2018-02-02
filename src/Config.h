@@ -2,6 +2,10 @@
 
 // serial config
 #define SERIAL_DEBUG Serial3
+#define SERIAL_CTRL USBSerial
+
+// controller config
+#define JSONBUFFER_SIZE 16
 
 // stepper configuration
 #define STEPPERCURRENT 200
@@ -18,6 +22,8 @@
 #define HOMING_ACCEL 20.0 // mm/s²
 #define SEARCH_SPEED 5.0 // mm/s
 #define SEARCH_ACCEL 20.0 // mm/s²
+#define MANUAL_SPEED 5.0 // mm/s
+#define MANUAL_ACCEL 2.5 // mm/s²
 #define MIN_SD_SPEED 1 // mm/s
 
 // max isotopes and syringes stored in eeprom

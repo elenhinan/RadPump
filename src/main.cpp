@@ -18,9 +18,23 @@ Adafruit_ST7735 display(DISP_CS, DISP_DC, DISP_RST);
 
 Injector injectorA(&linearstageA, &display);
 
+enum LoopState {
+    STATE_INIT,
+    STATE_IDLE,
+    STATE_HOMING,
+    STATE_JOG_NEG,
+    STATE_JOG_POS,
+    STATE_SETUP
+};
+
+LoopState loop_state;
+
 void setup() {
 
+    loop_state = STATE_INIT;
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(BUTTON_POS, INPUT_PULLUP);
+    pinMode(BUTTON_NEG, INPUT_PULLUP);
 
     // turn on backlight
     pinMode(DISP_BL, OUTPUT);
@@ -72,41 +86,53 @@ void setup() {
     linearstageA.enable();
     //linearstageB.enable();
 
-    //linearstageA.calibrate();
-
-    //delay(2000);
     injectorA.init();
     injectorA.set_isotope(3);
     injectorA.set_activity(10.0f, now(), 0.6);
 
     linearstageA.home(LinearStage::DIR_NEG);
-    linearstageA.move_abs(50, 6., 4.0, 1);
+    linearstageA.move_abs(50, 6., 4.0);
     linearstageA.wait_move();
-    //linearstageA.search();
-    linearstageA.move_abs(20, 2., 4.0, 1);
-    //delay(5000);
-    //linearstageA.search();
+    //linearstageA.move_abs(20, 2., 4.0);
 }
 
 void loop() {
     //display.fillScreen(ST7735_BLACK);
-    injectorA.update_display();
-    delay(10);
-    //static int count = 0;
-    //digitalWrite(LED_BUILTIN, HIGH);
-    //delay(50);
-    //digitalWrite(LED_BUILTIN, LOW);
-    //digitalWrite(STEPA_STEP, HIGH);
-    //delay(1);
-    //digitalWrite(STEPA_STEP, LOW);
-    //delay(50);
-    //display.fillScreen(ST7735_BLACK);
     //injectorA.update_display();
-    //delay(500);
-    //display.setCursor(0, 0);
-    // display.setTextColor(ST7735_GREEN, ST7735_BLACK);
-    // display.print(linearstageA.get_position_mm(), DEC);
-    // display.println("mm");
-    // display.print(EventTimer::Now(), HEX);
-    //display.println("ticks");
+    delay(10);
+    static bool button_pos_last = true;
+    static bool button_neg_last = true;
+    bool button_neg_state = digitalRead(BUTTON_NEG);
+    bool button_pos_state = digitalRead(BUTTON_POS);
+    if(button_neg_state != button_neg_last)
+    {
+        #ifdef DEBUG
+        SERIAL_DEBUG.print(F("Button(-):"));
+        SERIAL_DEBUG.println(button_neg_state);
+        SERIAL_DEBUG.println((uint32)EventTimer::source_ptr);
+        SERIAL_DEBUG.println(EventTimer::trigger_time_H);
+        SERIAL_DEBUG.println(EventTimer::Now());
+        #endif
+        if(button_neg_state)
+            linearstageA.stop();
+        else
+            linearstageA.move_abs(0., MANUAL_SPEED, MANUAL_ACCEL);
+    }
+    if(button_pos_state != button_pos_last)
+    {
+        #ifdef DEBUG
+        SERIAL_DEBUG.print(F("Button(+):"));
+        SERIAL_DEBUG.println(button_pos_state);
+        SERIAL_DEBUG.println((uint32)EventTimer::source_ptr);
+        SERIAL_DEBUG.println(EventTimer::trigger_time_H);
+        SERIAL_DEBUG.println(EventTimer::Now());
+        #endif
+        if(button_pos_state)
+            linearstageA.stop();
+        else
+            linearstageA.move_abs(70., MANUAL_SPEED, MANUAL_ACCEL);
+    }
+    button_neg_last = button_neg_state;
+    button_pos_last = button_pos_state;
+    
 }

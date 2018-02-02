@@ -46,26 +46,24 @@ private:
 
     // movement
     int8_t direction;
-    int32_t volatile position;
+    int32_t position;
     int32_t endstop;
-    volatile uint8_t state;
+    uint8_t state;
 
     // movement planner
     int32_t planner_target;
-    uint64_t planner_step;
-    uint64_t planner_next_time;
     float planner_speed;
     float planner_accel;
     float planner_speed_inv;
     float planner_accel_inv;
-    uint64_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
+    uint32_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
     uint64_t planner_t0, planner_t1, planner_t2, planner_t3; // as above, but time expressed in units of ts
     void planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time);
     bool planner_advance();
 
     // other functions
     void setup_driver();
-    void move(float x, float dx, float ddx, bool limit, uint64_t start_time);
+    void move(float x, float dx, float ddx, bool limit, uint64_t start_time = 0);
 
 public:
     static const int8_t DIR_POS = 1;
@@ -102,8 +100,8 @@ public:
     float get_endstop_mm() { return float(endstop)*(1./float(STEPMM)); }
     float get_position_mm() { return float(position)*(1./float(STEPMM)); }
     
-    void move_abs(float x, float dx, float ddx, uint64_t start_time);
-    void move_rel(float x, float dx, float ddx, uint64_t start_time);
+    void move_abs(float x, float dx, float ddx, uint64_t start_time = 0);
+    void move_rel(float x, float dx, float ddx, uint64_t start_time = 0);
     void wait_move();
     void event_execute();
 };

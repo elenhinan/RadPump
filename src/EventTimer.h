@@ -3,23 +3,18 @@
 #include "Config.h"
 
 #define TIMER_N TIMER1
-#define PRESCALE 72
+#define RESOLUTION 1 // resolution in microseconds
+#define PRESCALE (F_CPU*RESOLUTION/1000000L)
 #define DELTA_T (float(PRESCALE)/float(F_CPU))
-
-union uint32_split_t
-{
-    uint32_t uint32;
-    struct {
-        uint16_t uint16L;
-        uint16_t uint16H;
-    };
-};
+#define MICROS ((1000000*PRESCALE)/F_CPU)
+#define DELAY 2000 // us delay before movement starts "now", default 1ms
 
 class TimedEvent
 {
 public:
-    uint64_t event_time;
-    bool event_ready;
+    uint64_t event_time = UINT64_MAX;
+    uint32_t event_iteration = 0;
+    bool event_ready = false;
     virtual void event_execute() = 0;
 };
 
@@ -27,10 +22,12 @@ public:
 namespace EventTimer
 {
     // variables
-    extern uint64_t internal_time;
+    extern uint32_t internal_time;
     extern uint8_t source_count;
     static const float dt = DELTA_T;
-    extern uint64_t trigger_time;
+    static const uint64_t delay = DELAY/MICROS;
+    extern uint32_t trigger_time_H;
+    extern uint16_t trigger_time_L;
     extern TimedEvent* source_ptr;
     extern TimedEvent* source_list[8];
 

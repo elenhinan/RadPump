@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "cfloat": "cpp"
+        "cfloat": "cpp",
+        "typeinfo": "cpp"
     }
 }

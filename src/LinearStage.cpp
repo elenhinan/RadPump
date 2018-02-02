@@ -139,7 +139,7 @@ void LinearStage::home(int8_t home_dir)
     stallguard(true);
     if(home_dir == DIR_BOTH || home_dir == DIR_POS)
     {
-        move(LENGTH*1.10*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, false, 1); // move up to 110% of defined length
+        move(LENGTH*1.10*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, false); // move up to 110% of defined length
         wait_move(); // wait for stall (or end of move)
 
         if(state == MOVE_STALLED || state == MOVE_STOP)
@@ -153,7 +153,7 @@ void LinearStage::home(int8_t home_dir)
     }
     if(home_dir == DIR_BOTH || home_dir == DIR_NEG)
     {
-        move(-LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false, 1); // move up to 110% of defined length
+        move(-LENGTH*1.10*STEPMM, 5.0*STEPMM, 50.0*STEPMM, false); // move up to 110% of defined length
         wait_move(); // wait until move done (because of a stall)
 
         if(state == MOVE_STALLED || state == MOVE_STOP)
@@ -300,7 +300,7 @@ bool LinearStage::search()
     // SERIAL_DEBUG.println(sg_val_thr,DEC);
     // delay(2000);
     // #endif
-    move(20*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, true, 1); // move up to 20mm
+    move(20*STEPMM, HOMING_SPEED*STEPMM, HOMING_ACCEL*STEPMM, true); // move up to 20mm
 	//stepper.rms_current(100); // mA
 
     while(state != MOVE_STOP && state != MOVE_STALLED)
@@ -338,7 +338,6 @@ void LinearStage::move(float x, float dx, float ddx, bool limit, uint64_t start_
 {
     planner_init(x, dx, ddx, limit, start_time);
     event_ready = planner_advance();
-    event_time = planner_next_time;
     EventTimer::Prime();
 }
 
@@ -346,7 +345,6 @@ void LinearStage::event_execute()
 {
     step();
     event_ready = planner_advance();
-    event_time = planner_next_time;
 }
 
 void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time)
@@ -362,6 +360,8 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     SERIAL_DEBUG.print(F("Stage #"));
     SERIAL_DEBUG.print(name);
     SERIAL_DEBUG.println(F("  move"));
+    SERIAL_DEBUG.print(F("  start: "));
+    SERIAL_DEBUG.println(start_time, HEX);
     SERIAL_DEBUG.print(F("  pos: "));
     SERIAL_DEBUG.print(x/float(STEPMM));
     SERIAL_DEBUG.print(F(" (mm)  speed: "));
@@ -370,6 +370,9 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     SERIAL_DEBUG.print(ddx/float(STEPMM));
     SERIAL_DEBUG.println(F(" (mm/s²)"));
     #endif
+
+    if(start_time == 0)
+        start_time = EventTimer::Now() + EventTimer::delay;
 
     if(limit && (planner_target < 0 || planner_target > endstop)) // check limits
     {
@@ -407,13 +410,13 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     }
 
     // use steps for each block to determine timing for each block
-    planner_t0 = EventTimer::Now() + uint64_t((float)start_time*1000000000.*EventTimer::dt);
+    planner_t0 = start_time;
     planner_t1 = (uint64_t)(planner_t0 + sqrt(float(planner_d1)*planner_accel_inv)+0.5);
     planner_t2 = (uint64_t)(planner_t1 + float(planner_d2-planner_d1+1)*planner_speed_inv+0.5);
     planner_t3 = (uint64_t)(planner_t2 + sqrt(float(planner_d3-planner_d2-1)*planner_accel_inv)+0.5);
     
     // calculations for time to next step
-    //         t0 = now
+    //         t0 = start_time
     // d<d1  d(t) = t*t*accel
     //       t(d) = sqrt(d/accel)
     //         t1 = t(d1)
@@ -425,24 +428,25 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     //       t(d) = t3 - sqrt((d3-d)/accel)
     
     state = MOVE_ACCEL;
-    planner_step = 0;
+    event_iteration = 0;
 }
 
 bool LinearStage::planner_advance() {
     switch(state) // remove state and change to if's
     {
-        case MOVE_ACCEL:    planner_next_time = planner_t0 + (uint64_t)(sqrt(float(planner_step)*planner_accel_inv)); break;
-        case MOVE_SLEW:     planner_next_time = planner_t1 + (uint64_t)((float)(planner_step-planner_d1)*planner_speed_inv); break;
-        case MOVE_DECEL:    planner_next_time = planner_t3 - (uint64_t)(sqrt((float)(planner_d3-planner_step)*planner_accel_inv)); break;
-        case MOVE_STOP:     return false;
-        case MOVE_STALLED:  return false;
+        case MOVE_ACCEL:    event_time = planner_t0 + (uint64_t)(sqrt(float(event_iteration)*planner_accel_inv)); break;
+        case MOVE_SLEW:     event_time = planner_t1 + (uint64_t)((float)(event_iteration-planner_d1)*planner_speed_inv); break;
+        case MOVE_DECEL:    event_time = planner_t3 - (uint64_t)(sqrt((float)(planner_d3-event_iteration)*planner_accel_inv)); break;
+        case MOVE_STOP:     ; // default
+        case MOVE_STALLED:  ; // default
+        default:            event_time = UINT64_MAX; return false;
     }
 
-    if(planner_step==planner_d2) state = MOVE_DECEL; // check for d2 first, in case d1==d2 then skip slewing
-    else if(planner_step==planner_d1) state = MOVE_SLEW;
-    else if(planner_step==planner_d3) state = MOVE_STOP;
+    if(event_iteration==planner_d2) state = MOVE_DECEL; // check for d2 first, in case d1==d2 then skip slewing
+    else if(event_iteration==planner_d1) state = MOVE_SLEW;
+    else if(event_iteration==planner_d3) state = MOVE_STOP;
     
-    planner_step++;
+    event_iteration++;
     return true;
 }
 
@@ -450,7 +454,7 @@ void LinearStage::stop()
 {
     state = MOVE_STOP;
     event_ready = false;
-    event_time = 0xFFFFFFFFFFFFFFFF;
+    event_time = UINT64_MAX;
 }
 
 void LinearStage::wait_move()
@@ -460,7 +464,10 @@ void LinearStage::wait_move()
         delayMicroseconds(10);
     }
     #ifdef DEBUG
-    SERIAL_DEBUG.print(F("  stop: "));
+    if(state == MOVE_STALLED)
+        SERIAL_DEBUG.print(F("STALL: "));
+    else
+        SERIAL_DEBUG.print(F("STOP: "));
     SERIAL_DEBUG.print(position/float(STEPMM));
     SERIAL_DEBUG.println(F(" mm"));
     #endif
