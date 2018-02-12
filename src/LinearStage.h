@@ -59,7 +59,7 @@ private:
     uint32_t planner_d0, planner_d1, planner_d2, planner_d3; // step # for ramp start, slew start, slew end, ramp end
     uint64_t planner_t0, planner_t1, planner_t2, planner_t3; // as above, but time expressed in units of ts
     void planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time);
-    bool planner_advance();
+    void planner_advance();
 
     // other functions
     void setup_driver();

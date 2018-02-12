@@ -337,14 +337,14 @@ void LinearStage::move_abs(float x, float dx, float ddx, uint64_t start_time)
 void LinearStage::move(float x, float dx, float ddx, bool limit, uint64_t start_time)
 {
     planner_init(x, dx, ddx, limit, start_time);
-    event_ready = planner_advance();
-    EventTimer::Prime();
+    planner_advance();
+    EventTimer::prime();
 }
 
 void LinearStage::event_execute()
 {
     step();
-    event_ready = planner_advance();
+    planner_advance();
 }
 
 void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_t start_time)
@@ -372,7 +372,7 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     #endif
 
     if(start_time == 0)
-        start_time = EventTimer::Now() + EventTimer::delay;
+        start_time = EventTimer::now() + EventTimer::delay;
 
     if(limit && (planner_target < 0 || planner_target > endstop)) // check limits
     {
@@ -431,7 +431,7 @@ void LinearStage::planner_init(float x, float dx, float ddx, bool limit, uint64_
     event_iteration = 0;
 }
 
-bool LinearStage::planner_advance() {
+void LinearStage::planner_advance() {
     switch(state) // remove state and change to if's
     {
         case MOVE_ACCEL:    event_time = planner_t0 + (uint64_t)(sqrt(float(event_iteration)*planner_accel_inv)); break;
@@ -439,7 +439,7 @@ bool LinearStage::planner_advance() {
         case MOVE_DECEL:    event_time = planner_t3 - (uint64_t)(sqrt((float)(planner_d3-event_iteration)*planner_accel_inv)); break;
         case MOVE_STOP:     ; // default
         case MOVE_STALLED:  ; // default
-        default:            event_time = UINT64_MAX; return false;
+        default:            event_time = UINT64_MAX; event_ready = false;
     }
 
     if(event_iteration==planner_d2) state = MOVE_DECEL; // check for d2 first, in case d1==d2 then skip slewing
@@ -447,7 +447,7 @@ bool LinearStage::planner_advance() {
     else if(event_iteration==planner_d3) state = MOVE_STOP;
     
     event_iteration++;
-    return true;
+    event_ready = true;
 }
 
 void LinearStage::stop()

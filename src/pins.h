@@ -13,7 +13,7 @@
 #define DISP_RST        PA3
 #define DISP_DC         PA2
 #define DISP_CS         PA1
-#define DISP_BL         PA0
+#define RTC_CS          PA0
 // unused (limited)     PC15
 // unused (limited)     PC14
 // Built-in LED         PC13

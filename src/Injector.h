@@ -60,7 +60,6 @@ class Injector
 private:
     Syringe syringe;
     LinearStage* linearstage;
-    Adafruit_GFX* display;
     InjectorState state;
     float planned_amount;
     float planned_rate;
@@ -76,19 +75,19 @@ private:
 
 // functions
 private:
-    void print_name();
-    void print_volume(float volume);
-    void print_activity(float volume);
-    void print_plan();
-    void draw_syringe(float volume, bool redraw);
+    //void print_name();
+    //void print_volume(float volume);
+    //void print_activity(float volume);
+    //void print_plan();
+    //void draw_syringe(float volume, bool redraw);
     
 public:
-    Injector(LinearStage* linearstage, Adafruit_GFX* display);
+    Injector(LinearStage* linearstage);
     void init();
     void move_insertion();
     void move_max();
     void auto_insert();
-    void update_display();
+    //void update_display();
     float get_volume();
     float get_activity();
     void set_isotope(uint8_t index);

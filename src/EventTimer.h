@@ -16,27 +16,19 @@ public:
     uint32_t event_iteration = 0;
     bool event_ready = false;
     virtual void event_execute() = 0;
+    TimedEvent();
 };
 
 // move engine
 namespace EventTimer
 {
     // variables
-    extern uint32_t internal_time;
-    extern uint8_t source_count;
     static const float dt = DELTA_T;
     static const uint64_t delay = DELAY/MICROS;
-    extern uint32_t trigger_time_H;
-    extern uint16_t trigger_time_L;
-    extern TimedEvent* source_ptr;
-    extern TimedEvent* source_list[8];
 
     // functions
-    extern void Init();
-    extern void SetupTimer();
-    extern void Prime();
-    extern uint64_t Now();
-    extern void RegisterSource(TimedEvent* source);
-    extern void TimerOverflow();
-    extern void TimerCompare();
+    extern void init();
+    extern void prime();
+    extern uint64_t now();
+    extern void register_source(TimedEvent* source);
 };

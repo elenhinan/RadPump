@@ -1,6 +1,7 @@
 #define DEBUG
 
 // serial config
+#define BAUDRATE 115200
 #define SERIAL_DEBUG Serial3
 #define SERIAL_CTRL USBSerial
 
