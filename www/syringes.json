@@ -1,0 +1,32 @@
+[
+    {
+        "name":"Omnifix 0.5ml",
+        "volume": 500.0,
+        "end": 14.5,
+        "start": 71.8
+    },
+    {
+        "name":"Omnifix 1ml",
+        "volume": 1000.0,
+        "end": 14.5,
+        "start": 71.8
+    },
+    {
+        "name":"Omnifix 2ml",
+        "volume": 2000.0,
+        "end": 14.5,
+        "start": 71.8
+    },
+    {
+        "name":"Omnifix 5ml",
+        "volume": 5000.0,
+        "end": 14.5,
+        "start": 71.8
+    },
+    {
+        "name":"Omnifix 10ml",
+        "volume": 10000.0,
+        "end": 14.5,
+        "start": 71.8
+    }
+]

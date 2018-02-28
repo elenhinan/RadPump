@@ -1,0 +1,31 @@
+{
+    "injector": [
+        {
+            "name": "Pump A",
+            "isotope": {
+                "name": "F18",
+                "halflife": 109.7,
+                "t0": "20180211-151035.23"
+            },
+            "syringe": {
+                "name":"Omnifix 1ml",
+                "volume":"1000.0f",
+                "end": 14.5,
+                "start": 71.8
+            },
+            "plan": {
+                "delay": 30,
+                "amount": 20.0,
+                "mode": "vol",
+                "duration": 150
+            },
+            "status": {
+                "mode": 0,
+                "position": 53.3,
+                "target": 30.0,
+                "speed": 3.0,
+                "activity": 1.0
+            }
+        }
+    ]
+}
