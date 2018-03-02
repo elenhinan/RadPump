@@ -16,15 +16,31 @@
         <link rel="stylesheet" href="css/syringepump.css">
     </head>
     <body>
+        <!-- templates -->
+        <script id="template_input_number" type="text/x-jsrender">
+            <div class="form-group" id="form_group_{{:id}}">
+                <div class="input-group" id="input_group_{{:id}}">
+                    <div class="input-group-prepend">
+                        <label class="input-group-text" for="input_{{:id}}" style="width: {{:label_width}}px;" id="input_label_{{:id}}">{{:label}}</label>
+                    </div>
+                    <input type="number" class="form-control" step="{{:step}}" value="{{:value}}" min="{{:min}}" max="{{:max}}" id="input_{{:id}}">
+                    <div class="input-group-append">
+                        <label class="input-group-text" for="input_{{:id}}" style="width: {{:unit_width}}px;" id="input_unit_{{:id}}">{{:unit}}</label>
+                    </div>
+                </div>
+            </div>
+        </script>
+        
         <br>
+        <!-- Insert Syringe Modal page -->
         <div class="modal fade" tabindex="-1" role="dialog" id="modal_insert">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Insert syringe</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <!--button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
-                        </button>
+                        </button-->
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
@@ -72,6 +88,23 @@
                 </div>
             </div>
         </div>
+        <!-- Configuration Modal page -->
+        <div class="modal fade" tabindex="-1" role="dialog" id="modal_config">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Configuration</h5>
+                    </div>
+                    <div class="modal-body" id="modal_config_body">
+                    </div>
+                    <div class="modal-footer">
+                            <button type="button" class="btn btn-sm btn-primary" id="button_config_ok" data-dismiss="modal">Ok</button>
+                            <button type="button" class="btn btn-sm btn-secondary" id="button_config_cancel" data-dismiss="modal">Cancel</button>
+                        </div>
+                </div>
+            </div>
+        </div>
+        <!-- Pump 1 container -->
         <div class="container border border-dark rounded" id="container_pumpA" style="width: 380px;">
             <div class="row border-bottom bg-primary border-dark text-light">
                 <div class="col">
@@ -82,18 +115,18 @@
             <div class="row form-group">
                 <div class="col">
                     <div class="btn-group" role="group" tabindex="1" id="button_group_move" aria-label="">
-                        <button type="button" class="btn btn-default" id="button_in_move"><span class="fas fa-angle-double-up"></span></button>
-                        <button type="button" class="btn btn-default" id="button_in_nudge"><span class="fas fa-angle-up"></span></button>
-                        <button type="button" class="btn btn-default" id="button_start"><span class="fas fa-play"></span></button>
-                        <button type="button" class="btn btn-default" id="button_out_nudge"><span class="fas fa-angle-down"></span></button>
-                        <button type="button" class="btn btn-default" id="button_out_move"><span class="fas fa-angle-double-down"></span></button>
+                        <button type="button" class="btn btn-default" title="Move in (hold)" id="button_in_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-up"></span></button>
+                        <button type="button" class="btn btn-default" title="Nudge in" id="button_in_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-up"></span></button>
+                        <button type="button" class="btn btn-default" title="Start" id="button_start" data-tooltip="tooltip" data-placement="top"><span class="fas fa-play"></span></button>
+                        <button type="button" class="btn btn-default" title="Nudge out" id="button_out_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-down"></span></button>
+                        <button type="button" class="btn btn-default" title="Move out (hold)" id="button_out_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-down"></span></button>
                     </div>
                 </div>
                 <div class="col">
                     <div class="btn-group float-right" role="group" aria-label="">
-                        <button type="button" class="btn btn-default" id="button_home"><span class="fas fa-home"></span></button>
-                        <button type="button" class="btn btn-default" id="button_insert" data-toggle="modal" data-backdrop="static" data-target="#modal_insert"><span class="fas fa-syringe"></span></button>
-                        <button type="button" class="btn btn-default" id="button_config"><span class="fas fa-cog"></span></button>
+                        <button type="button" class="btn btn-default" title="Home" id="button_home" data-tooltip="tooltip" data-placement="top"><span class="fas fa-home"></span></button>
+                        <button type="button" class="btn btn-default" title="Insert syringe" id="button_insert" data-toggle="modal" data-backdrop="static" data-target="#modal_insert" data-tooltip="tooltip" data-placement="top"><span class="fas fa-syringe"></span></button>
+                        <button type="button" class="btn btn-default" title="Configuration" id="button_config" data-toggle="modal" data-backdrop="static" data-target="#modal_config" data-tooltip="tooltip" data-placement="top"><span class="fas fa-cog"></span></button>
                     </div>
                 </div>
     
@@ -102,7 +135,7 @@
             <div class="row form-group">
                 <div class="col-sm">
                     <div class="progress" style="height: 28px;">
-                        <div class="progress-bar progress-bar-animated progress-bar-striped bg-primary" id="volume_progress_target" role="progressbar"
+                        <div class="progress-bar progress-bar-striped bg-primary" id="volume_progress_target" role="progressbar"
                             style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                         <div class="progress-bar progress-bar-animated progress-bar-striped bg-warning" id="volume_progress_current" role="progressbar"
                             style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
@@ -184,10 +217,12 @@
     </body>
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/jsrender.min.js"></script>
     <script src="js/popper.min.js"></script>
     <script src="js/moment.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/bootstrap-datetimepicker.min.js"></script>
+    <script src="js/js.cookie.js"></script>
     <!-- Ajax code for syringepump -->
     <script src="js/syringepump.js"></script>
 </html>

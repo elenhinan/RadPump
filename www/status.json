@@ -2,6 +2,7 @@
     "injector": [
         {
             "name": "Pump A",
+            "state": "stopped",
             "isotope": {
                 "name": "F18",
                 "halflife": 109.7,

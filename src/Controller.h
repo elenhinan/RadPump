@@ -13,29 +13,28 @@ type: volume, length, activity
 unit: 0:"ml" / 1:"MBq"/ 1:"mm" unit
 
 {
-    "injector": "1",
-    "isotope": {
-        "name": "F18",
-        "halflife": "109.7",
-        "t0": "20180211-151035.23"
-    },
-    "syringe": {
-        "name":"Omnifix 1ml",
-        "volume":"1.0f",
-        "end":"14.5",
-        "start":"71.8f"
-    },
-    "injection": {
-        "time": "20180211-152035.32",
-        "amount": "20",
-        "unit": "ml",
-        "speed":"0.01",
-        "duration":"150"
-    },
-    "command":{
-        "cmd":"move",
-        "param":"20"
-    }
+    "injector": [
+        {
+            "isotope": {
+                "name": "F18",                      string
+                "halflife": "109.7",                s
+                "t0": "20180211-151035.23"          datetime
+            },
+            "syringe": {
+                "name":"Omnifix 1ml",               string
+                "volume":"1000.0f",                 ul
+                "end":"14.5",                       mm
+                "start":"71.8",                     mm
+                "current":"53.3"                    mm
+            },
+            "injection": {
+                "delay": "30",                      s
+                "amount": "20.0",                   ul / ul / mm
+                "mode": "vol",                      vol / act / len
+                "duration":"150"                    s
+            }
+        }
+    ]
 }
 */
 
