@@ -72,7 +72,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <div class="input-group date" id="input_group_t0">
+                                <div class="input-group date">
                                     <div class="input-group-prepend">
                                         <label class="input-group-text" style="width: 90px;">T<sub>0</sub>&nbsp;(time)</label>
                                     </div>
@@ -115,21 +115,20 @@
             <div class="row form-group">
                 <div class="col">
                     <div class="btn-group" role="group" tabindex="1" id="button_group_move" aria-label="">
-                        <button type="button" class="btn btn-default" title="Move in (hold)" id="button_in_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-up"></span></button>
-                        <button type="button" class="btn btn-default" title="Nudge in" id="button_in_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-up"></span></button>
-                        <button type="button" class="btn btn-default" title="Start" id="button_start" data-tooltip="tooltip" data-placement="top"><span class="fas fa-play"></span></button>
-                        <button type="button" class="btn btn-default" title="Nudge out" id="button_out_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-down"></span></button>
-                        <button type="button" class="btn btn-default" title="Move out (hold)" id="button_out_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-down"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Move in (hold)" id="button_in_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-up"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Nudge in" id="button_in_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-up"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Start" id="button_start" data-tooltip="tooltip" data-placement="top"><span class="fas fa-play"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Nudge out" id="button_out_nudge" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-down"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Move out (hold)" id="button_out_move" data-tooltip="tooltip" data-placement="top"><span class="fas fa-angle-double-down"></span></button>
                     </div>
                 </div>
                 <div class="col">
                     <div class="btn-group float-right" role="group" aria-label="">
-                        <button type="button" class="btn btn-default" title="Home" id="button_home" data-tooltip="tooltip" data-placement="top"><span class="fas fa-home"></span></button>
-                        <button type="button" class="btn btn-default" title="Insert syringe" id="button_insert" data-toggle="modal" data-backdrop="static" data-target="#modal_insert" data-tooltip="tooltip" data-placement="top"><span class="fas fa-syringe"></span></button>
-                        <button type="button" class="btn btn-default" title="Configuration" id="button_config" data-toggle="modal" data-backdrop="static" data-target="#modal_config" data-tooltip="tooltip" data-placement="top"><span class="fas fa-cog"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Home pump" id="button_home" data-tooltip="tooltip" data-placement="top"><span class="fas fa-home"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Insert syringe" id="button_insert" data-toggle="modal" data-backdrop="static" data-target="#modal_insert" data-tooltip="tooltip" data-placement="top"><span class="fas fa-syringe"></span></button>
+                        <button type="button" class="btn btn-outline-primary" title="Configuration" id="button_config" data-toggle="modal" data-backdrop="static" data-target="#modal_config" data-tooltip="tooltip" data-placement="top"><span class="fas fa-cog"></span></button>
                     </div>
                 </div>
-    
             </div>
         
             <div class="row form-group">
@@ -150,7 +149,7 @@
                         </div>
                         <input type="number" class="form-control" min="0" max="3600" style="text-align:right;" name="Delay" id="delay_input" aria-describedby="helpId" placeholder="0">
                         <div class="input-group-append">
-                            <button class="btn btn-secondary" style="width: 60px;" type="button" id="delay_unit">s</button>
+                            <button class="btn btn-secondary btn" style="width: 60px;" type="button" id="delay_unit">s</button>
                             <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split" type="button" id="delay_dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></button>
                             <div class="dropdown-menu bg-light dropdown-menu-right" aria-labelledby="delay_dropdown">
                                 <a class="dropdown-item" href="#" id="delay_unit_s">Delay (s)</a>
@@ -207,12 +206,11 @@
                         </div>
                         <input type="number" class="form-control" min="0" max="5000" style="text-align:right;" name="Delay" id="weight_input" aria-describedby="helpId" placeholder="0">
                         <div class="input-group-append">
-                            <button class="btn btn-secondary" style="width: 60px;" type="button">g</button>
+                            <button class="btn btn-secondary" style="width: 89px;" type="button">g</button>
                         </div>
                     </div>
                 </div>
             </div>
-        <p id="debugtext">...</p>
         </div>
     </body>
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->

@@ -8,4 +8,7 @@ https://github.com/pingcheng/bootstrap4-datetimepicker
 https://getbootstrap.com/
 https://fontawesome.com/
 
+for android / ios app:
+https://phonegap.com/
+
 

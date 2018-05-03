@@ -1,4 +1,5 @@
 {
+    "time": "20180312-114320",
     "injector": [
         {
             "name": "Pump A",
@@ -6,7 +7,7 @@
             "isotope": {
                 "name": "F18",
                 "halflife": 109.7,
-                "t0": "20180211-151035.23"
+                "t0": "20180211-151035"
             },
             "syringe": {
                 "name":"Omnifix 1ml",

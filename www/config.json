@@ -1,5 +1,8 @@
 {
-    "nudge_speed"   : 5.0,
+    "nudge_speed" : {
+        "value"     : 5.0,
+        "default"   : 5.0,
+    }
     "nudge_accel"   : 5.0,
     "nudge_dist"    : 0.5,
     "travel_speed"  : 10.0,

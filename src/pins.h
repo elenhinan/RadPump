@@ -2,20 +2,20 @@
 #pragma once
 #ifdef ARDUINO_GENERIC_STM32F103C
 
-#define CTRL_RX         PB11
-#define CTRL_TX         PB10
-#define BUTTON_POS      PB1
-#define BUTTON_NEG      PB0
+// unused               PB11
+// unused               PB10
+// unused               PB1
+// unused               PB0
 #define DISP_MOSI       PA7
 #define DISP_MISO       PA6
 #define DISP_SCK        PA5
-// unused               PA4
-#define DISP_RST        PA3
-#define DISP_DC         PA2
-#define DISP_CS         PA1
-#define RTC_CS          PA0
-// unused (limited)     PC15
-// unused (limited)     PC14
+#define DISP_RST        PA4
+#define DISP_DC         PA3
+#define DISP_CS         PA2
+#define BUTTON_A_POS    PA1
+#define BUTTON_A_NEG    PA0
+#define BUTTON_B_POS    PC15
+#define BUTTON_B_NEG    PC14
 // Built-in LED         PC13
 
 // unused               PB12
@@ -27,12 +27,12 @@
 #define STEPA_STALL     PA10
 // USB-                 PA11
 // USB+                 PA12
-// unused               PA15
-#define STEPB_STEP      PB3
-#define STEPB_CS        PB4
-#define STEPB_STALL     PB5
-// unused               PB6
-// unused               PB7
+#define STEPB_STEP      PA15
+#define STEPB_CS        PB3
+#define STEPB_STALL     PB4
+#define CTRL_RST        PB5
+#define CTRL_TX         PB6 // TX1
+#define CTRL_RX         PB7 // RX1
 #define STEPA_EN        PB8
 #define STEPB_EN        PB9
 

@@ -77,21 +77,21 @@ void check_buttons()
 }
 
 void loop() {
-    delay(1000);
+    //delay(1000);
     check_buttons();
-    tmElements_t tm;
-    RTC.read(tm);
-    SERIAL_DEBUG.print("RTC:");
-    SERIAL_DEBUG.print(tm.Hour);
-    SERIAL_DEBUG.print(":");
-    SERIAL_DEBUG.print(tm.Minute);
-    SERIAL_DEBUG.print(":");
-    SERIAL_DEBUG.print(tm.Second);
-    SERIAL_DEBUG.print("  ");
-    SERIAL_DEBUG.print(tm.Year);
-    SERIAL_DEBUG.print("-");
-    SERIAL_DEBUG.print(tm.Month);
-    SERIAL_DEBUG.print("-");
-    SERIAL_DEBUG.print(tm.Day);
-    SERIAL_DEBUG.println("");
+    //tmElements_t tm;
+    //RTC.read(tm);
+    //SERIAL_DEBUG.print("RTC:");
+    //SERIAL_DEBUG.print(tm.Hour);
+    //SERIAL_DEBUG.print(":");
+    //SERIAL_DEBUG.print(tm.Minute);
+    //SERIAL_DEBUG.print(":");
+    //SERIAL_DEBUG.print(tm.Second);
+    //SERIAL_DEBUG.print("  ");
+    //SERIAL_DEBUG.print(tm.Year);
+    //SERIAL_DEBUG.print("-");
+    //SERIAL_DEBUG.print(tm.Month);
+    //SERIAL_DEBUG.print("-");
+    //SERIAL_DEBUG.print(tm.Day);
+    //SERIAL_DEBUG.println("");
 }
